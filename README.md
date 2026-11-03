@@ -1,6 +1,6 @@
 # BUSSAP
 
-Personal Sapporo bus map and timetable project. The current code is a small source-validation CLI for Hokkaido Chuo Bus, Jotetsu, and JR Hokkaido Bus local routes. There is no phone UI yet. See [battleplan.md](battleplan.md) and [docs/source-inventory.md](docs/source-inventory.md).
+Personal Sapporo bus map and timetable project. Beechan serves a first phone screen for stop search and scheduled departures from Hokkaido Chuo Bus, Jotetsu, and JR Hokkaido Bus local routes. See [battleplan.md](battleplan.md) and [docs/source-inventory.md](docs/source-inventory.md).
 
 ## Source query on Beechan
 
@@ -34,6 +34,8 @@ Beechan runs a read-only API bound to `127.0.0.1:8788`. Tailscale Serve exposes 
 ```text
 https://beechan.tail8d9f69.ts.net:10002
 ```
+
+Open that URL in a phone browser for the stop search screen. Choose the exact boarding position, then today, tomorrow, or another date. JR stops ask for a route/direction before displaying day-category candidate times. This is the first stop view; the street map, installable/offline PWA behavior, and route map are later slices.
 
 The API supports `GET /health`, `GET /api/stops?operator=...&name=...`, `GET /api/jr-patterns?stop=...`, and `GET /api/departures?operator=...&stop=...&date=...`. Departure query parameters match the CLI (`after`, `limit`, `route`, `destination`, `pattern`, `jr_category`). It accepts no writes. JR responses include the exact user warning `cant promise correct times now` and withhold times after an unreviewed source revision change. The server caches small JR lookups briefly to avoid repeated upstream calls; Chuo and Jotetsu queries read Beechan's local feed files.
 

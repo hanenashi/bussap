@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-11-03 — First phone stop view
+
+Goal: search real stops, select an exact source boarding position or JR route pattern, and show scheduled departures for today, tomorrow, or a chosen date on the existing Beechan HTTPS origin. Use the generated visual concept at `docs/design/stop-screen-concept.png` for the layout and typography; real API data replaces the sample text.
+
+Checks: verify the API and static shell through Tailscale Serve, exercise stop search → selection → departures in a rendered mobile browser, check operator/date controls and JR warning, and compare the rendered view with the concept. The map and offline cache remain later slices.
+
+Results: `web/` is a dependency-free first stop screen served from the API's existing origin. Search returns source-specific boarding points for Chuo and Jotetsu, and JR station selection leads to route, direction, and boarding-number selection. Today, tomorrow, custom date, refresh, source link, feed retrieval time, and clear coverage/connection states are present. JR candidate departures display the owner's exact warning. The visual concept's bold BUSSAP header, search tabs, stop heading, date controls, open departure rows, and highlighted next bus are reflected in the rendered screen; live data and browser chrome differ from the sample art.
+
+Verification: Chromium Playwright at 393×852 exercised Jotetsu `札幌駅` 25番のりば, tomorrow, JR `新札幌駅` → 新１２, and Chuo `地下鉄麻生駅`; there were no page errors. A 320×720 pass found no horizontal overflow and the calendar control opened without a page error. A 1000×800 screenshot confirmed the centered desktop layout. Beechan's Tailscale HTTPS origin returned the page and JavaScript with 200; `/health` remained ready. `node --check`, the four Python unit tests, and `git diff --check` passed. Actual Android browser interaction and offline behavior are still to be checked in later slices.
+
+
 ## 2026-11-03 — Beechan read-only service and feed refresh
 
 Goal: let phone browsers query Beechan's normalized departure results through a small read-only HTTPS service. Refresh the Chuo and Jotetsu feeds on Beechan without making phones fetch upstream data.
