@@ -1,0 +1,15 @@
+[Unit]
+Description=Dedicated userspace Tailscale node for BUSSAP Funnel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/tailscaled --tun=userspace-networking --socket=%t/bussap-tailnode.sock --statedir=%h/GIT/bussap/.local-data/tailnode --port=0
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

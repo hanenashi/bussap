@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-03 — Dedicated BUSSAP Funnel node
+
+The owner chose a separate Tailscale node so Beechan's five existing private Serve URLs would stay intact. A userspace `tailscaled` instance with its own mode-0700 state and socket is now registered as `bussap-gate.tail8d9f69.ts.net`; the `bussap-tailnode.service` user unit keeps it running. The gateway's WebAuthn RP ID and allowed origins were changed to that hostname. The previous staging mapping on Beechan was removed, and the new node has private staging on port 10003 and public Funnel on port 443. The original BUSSAP at Beechan port 10002 remains private.
+
+Checks: the new node reports Running; its private HTTPS stage returned 200 for the sign-in page, 401 for an unauthenticated API request, and 404 for the PDF. Chromium over that HTTPS origin enrolled and signed in with a virtual authenticator, loaded the gated app with an active service worker and install manifest, cleared cookies, and signed in again without page errors. The test credential was revoked. Public Funnel status reports on; both published relay IPs returned 200 for the gate, and a direct relay request returned 401 for the API, 404 for the PDF, and 401 for app JavaScript. The owner's Pixel successfully enrolled a production credential through the public URL; its used code file was removed. A second one-use code for the wife's phone was placed on the owner's Pixel clipboard for private sharing. Her enrollment and install remain pending. No test credentials remain in the production database.
+
 ## 2026-11-03 — Device credential gate staged for a future Funnel
 
 Goal: prepare an HTTPS entry point that can authenticate only the owner's and wife's enrolled phones without asking either phone to run Tailscale. Preserve the current private BUSSAP URL and keep the 2016 PDF off any public endpoint.

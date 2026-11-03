@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=%h/GIT/bussap
-ExecStart=%h/GIT/bussap/.venv/bin/python %h/GIT/bussap/scripts/public_gateway.py serve --port 8790
+ExecStart=%h/GIT/bussap/.venv/bin/python %h/GIT/bussap/scripts/public_gateway.py serve --port 8790 --rp-id=bussap-gate.tail8d9f69.ts.net --origins=https://bussap-gate.tail8d9f69.ts.net:10003,https://bussap-gate.tail8d9f69.ts.net
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
