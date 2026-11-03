@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-11-03 — JR probe and two GTFS comparisons
+
+Goal: make the three JR local samples repeatable, then check one Chuo and one Jotetsu scheduled departure against visible operator sources.
+
+Sources: Sapporo Ekibus timetable interface and JR's 2026-04 PDFs; HODA Chuo/Jotetsu ZIPs and operator timetable pages.
+
+Assumptions: upstream IDs and day-category meanings may change; a successful HTTP response alone does not prove a valid schedule. No account or location data is needed.
+
+Checks: run the probe on Beechan with bounded requests; verify route identity, revision, category and selected departure times; compare GTFS stop/direction/date/time with independent operator output. Record a mismatch as a finding.
+
+Results: `python3 scripts/probe_jr.py` passed 3/3 JR local samples against the recorded 2026-04 revision and all four day categories. Chuo 麻０５ from 地下鉄麻生駅 and Jotetsu 南５４ from 札幌駅 matched the first three weekday and Saturday departures in current operator PDFs; exact stops, dates and links are in [source-inventory.md](source-inventory.md). No mismatch found in these narrow samples.
+
+Limits: the JR endpoint lacks an arbitrary-date query, so service exceptions and seasonal changes are still unproven. The JR probe fixture will deliberately fail when the source revision changes, requiring review. Chuo's winter timetable transition needs a recheck. Busdia did not respond from Beechan; operator PDFs remain a manual fallback.
+
+Next step: implement a unified stop/date CLI query with source validity and boarding-position identity, then check broader route coverage and exceptional dates. No map or phone UI in this slice.
+
 ## 2026-11-03 — Phase 0 source audit started
 
 Goal: establish trustworthy scheduled data for Chuo, Jotetsu, and regular JR Hokkaido Bus routes before building the app.

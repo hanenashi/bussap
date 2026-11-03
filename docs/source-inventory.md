@@ -42,3 +42,16 @@ The timetable endpoint returns four day categories: weekday; first/third/fifth S
 **Current confidence:** JR regular local data is reachable, and three routes' first three weekday and weekend departures match independent 2026-04 operator PDFs. This proves a useful current-revision schedule path. A production-ready JR adapter still needs broad route coverage checks, full-table comparisons, handling of first/third/fifth vs second/fourth Saturdays, and a separate plan for seasonal changes and exceptional dates.
 
 The operator's [Shin-Sapporo terminal guide](https://www.jrhokkaidobus.com/timetable/terminal/shinsapporo/) independently lists 新１２ from boarding point 1, and its [Miyanosawa terminal guide](https://www.jrhokkaidobus.com/timetable/terminal/miyanosawa/) independently lists 宮４９ from boarding point 6. JR's 2026-04 PDFs are image-based; the six three-time comparisons above were made visually after rendering pages 1 and 2 locally. The PDF route diagrams offer a fallback for route shape context, subject to reuse rights.
+
+The bounded live probe is `python3 scripts/probe_jr.py`. Its [fixture](../fixtures/jr_local_samples.json) contains only three sample identities, the observed revision, first three times per day category, and operator PDF links. It makes three POST requests with a short pause; it fails when the revision, route identity or sample times change. A pass is a source-health check, not proof of all routes or of a particular future date.
+
+## GTFS versus operator timetable samples
+
+GTFS `calendar.txt` and `calendar_dates.txt` were applied for Wednesday 2026-11-04 and Saturday 2026-11-07 before selecting trips. Times below are from one direction and one exact boarding stop ID. They match the indicated operator PDFs' first three times for the corresponding weekday and Saturday/Sunday/holiday columns.
+
+| Operator | GTFS boarding stop / direction | 2026-11-04 first three | 2026-11-07 first three | Operator timetable |
+| --- | --- | --- | --- | --- |
+| Chuo | `S010200009900800`, 地下鉄麻生駅, 麻０５ to 屯田６条１２丁目 | 07:40, 08:45, 09:47 | 08:06, 09:06, 10:06 | [2026 summer Sapporo L PDF](https://www.chuo-bus.co.jp/feature/dia-summer2026/pdf/sapporo_L.pdf), 麻０５ table |
+| Jotetsu | `S010800000100100`, 札幌駅, 南５４ to 南町四丁目 | 06:58, 07:25, 08:00 | 06:55, 07:40, 08:10 | [2026-04 Sapporo stop 25 PDF](https://www.jotetsu.co.jp/bus/times/260401/sapporoeki-25.pdf), 南５４ table |
+
+Jotetsu's GTFS stop has `platform_code=２５`, consistent with its Sapporo stop 25 timetable. The Chuo sample has no platform code; its coordinates distinguish it from other stops named 地下鉄麻生駅. These comparisons confirm two sample patterns in the current operator timetables, not full feed accuracy. Recheck when Chuo's winter timetable takes effect.
