@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-03 — PDF reference pan and closer zoom
+
+The owner reported that the PDF loaded but one-finger dragging did nothing and the map needed closer zoom. The viewer now starts at 2.3× fit width, pans with one finger, pinches between 1× and 8×, and double taps for a quick closer view. It keeps the back button as the only visible control. PDF.js renders the same source page at 1.5× resolution; route data is still not extracted from the historical PDF.
+
+Mobile-sized Chromium touch emulation at 393 × 852 confirmed one-finger drag changed the map position, pinch increased width from 904 px to 1738 px, and double tap reached the 3144 px maximum. The page had one button, no horizontal overflow, and no JavaScript errors. Real Pixel QA remains pending while the phone is on cellular and Wireless debugging has no listener.
+
 ## 2026-11-03 — Route label layout and line filtering
 
 The owner reported that `真駒内駅` appeared one character per line beside the long `南９８真駒内駅～道路管理事務所` route name. Departure rows now show the short route code while retaining the full route name as a title. Chuo and Jotetsu rows are tappable: a tap filters by the chosen line code, date and refresh keep that filter, and **すべて見る** clears it. JR remains on its existing pattern selection flow.

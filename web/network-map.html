@@ -12,14 +12,15 @@
     header { flex: none; display: flex; align-items: center; height: calc(52px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 12px 0; background: white; }
     button { min-width: 72px; min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: #2370b8; font: 700 16px system-ui, sans-serif; cursor: pointer; }
     button:focus-visible { outline: 3px solid #97c5ee; border-radius: 8px; }
-    main { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
-    canvas { display: block; width: 100%; max-width: 2381px; height: auto; margin: auto; background: white; }
+    main { position: relative; flex: 1; min-height: 0; overflow: hidden; overscroll-behavior: none; touch-action: none; cursor: grab; }
+    main:active { cursor: grabbing; }
+    canvas { position: absolute; top: 0; left: 0; display: block; max-width: none; background: white; transform-origin: top left; user-select: none; -webkit-user-select: none; }
     #message { position: absolute; top: 72px; left: 16px; right: 16px; margin: 0; color: #405068; font-size: 14px; text-align: center; }
   </style>
 </head>
 <body>
   <header><button id="back" type="button" aria-label="BUSSAPに戻る">← 戻る</button></header>
-  <main aria-label="2016年の参考路線図 PDF"><canvas id="page" role="img" aria-label="2016年の参考路線図"></canvas></main>
+  <main id="viewport" tabindex="0" aria-label="2016年の参考路線図 PDF。一本指で移動、二本指で拡大縮小、ダブルタップで拡大"><canvas id="page" role="img" aria-label="2016年の参考路線図"></canvas></main>
   <p id="message" role="status">PDFを読み込んでいます…</p>
   <script type="module" src="/network-map.js"></script>
 </body>
