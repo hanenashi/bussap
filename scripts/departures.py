@@ -88,6 +88,51 @@ def jr_patterns(station_id: int, limit: int | None) -> dict:
     return {"operator": "jr", "station_id": station_id, "total_patterns": len(patterns), "patterns": patterns[:limit] if limit else patterns}
 
 
+def jr_route_details(station_id: int, pattern: str, course_id: int, markers: list[dict]) -> dict:
+    pattern_info = next((r for r in jr_patterns(station_id, None)["patterns"] if r["pattern"] == pattern), None)
+    if pattern_info is None:
+        raise ValueError("JR pattern is not listed at this stop")
+    pattern_course = pattern.split(":", 1)[-1].split("-", 1)[0]
+    if str(course_id) != pattern_course:
+        table = post_json(JR_ENDPOINT, {"kind": 0, "pattern": pattern, "departure_station_id": station_id}).get("station_linelist_timetable", {}).get("time_table", {})
+        courses = {str(ride.get("course_id")) for line in table.get("line_list", [])
+                   for day in line.get("dia_list", []) for ride in day.get("time_table", [])}
+        if table.get("pattern") != pattern or str(course_id) not in courses:
+            raise ValueError("JR course is not on this pattern")
+    data = post_json(JR_BASE + "/Get_station_listdata", {"kind": 0, "course_id": course_id, "lang": "ja"})
+    stations = data.get("station_data")
+    if not isinstance(stations, list) or not stations or len(stations) > 300:
+        raise ValueError("JR route stop list is unavailable")
+    if not any(r.get("station_id") == station_id for r in stations):
+        raise ValueError("boarding stop is not on this JR course")
+    positions = {}
+    for marker in markers:
+        if marker.get("operator") != "jr":
+            continue
+        sid = marker.get("station_id")
+        positions.setdefault(sid, []).append(marker)
+    result = []
+    boarded = False
+    for row in stations:
+        sid = row.get("station_id")
+        if not isinstance(sid, int) or not isinstance(row.get("name"), str):
+            raise ValueError("JR route contains an invalid stop")
+        is_boarding = sid == station_id and not boarded
+        boarded = boarded or is_boarding
+        choices = positions.get(sid, [])
+        preferred = pattern_info["boarding_position"] if is_boarding else None
+        marker = next((m for m in choices if m.get("boarding_position") == preferred), None) if preferred else None
+        if marker is None and choices:
+            marker = min(choices, key=lambda m: (0, int(m["boarding_position"])) if str(m.get("boarding_position") or "").isdecimal() else (1, str(m.get("boarding_position") or "")))
+        result.append({"id": f"jr:{sid}", "name": row["name"],
+                       "lat": marker["lat"] if marker else None, "lon": marker["lon"] if marker else None,
+                       "boarding": is_boarding})
+    return {"operator": "jr", "route": pattern_info["route"], "destination": pattern_info["direction"],
+            "stops": result, "geometry": "straight_lines_between_stops",
+            "source": JR_BASE + "/Get_station_listdata",
+            "missing_coordinates": sum(s["lat"] is None for s in result)}
+
+
 def parse_minutes(value: str) -> int:
     hour, minute, *rest = value.split(":")
     if not hour.isdigit() or not minute.isdigit() or int(minute) > 59 or (rest and (len(rest) != 1 or not rest[0].isdigit() or int(rest[0]) > 59)):
@@ -189,6 +234,7 @@ def query_gtfs(operator: str, stop_id: str, service_date: date, after: str, limi
                 "scheduled_time": row["departure_time"],
                 "scheduled_at": local_timestamp(service_date, row["departure_time"]),
                 "trip_id": f"{operator}:{trip['trip_id']}",
+                "stop_sequence": int(row["stop_sequence"]),
             })
         departures.sort(key=lambda r: (r["scheduled_at"], r["route"], r["trip_id"]))
         return {
@@ -202,6 +248,36 @@ def query_gtfs(operator: str, stop_id: str, service_date: date, after: str, limi
             "source": FEEDS[operator],
             "departures": departures[:limit],
         }
+
+
+def gtfs_route_details(operator: str, trip_id: str, stop_id: str, stop_sequence: int) -> dict:
+    path = DATA_DIR / f"{operator}.zip"
+    if not path.exists():
+        raise ValueError(f"{operator} feed missing; run refresh first")
+    with zipfile.ZipFile(path) as archive:
+        trip = next((r for r in rows(archive, "trips.txt") if r["trip_id"] == trip_id), None)
+        if trip is None:
+            raise ValueError("trip is not in the current feed")
+        route = next((r for r in rows(archive, "routes.txt") if r["route_id"] == trip["route_id"]), None)
+        if route is None:
+            raise ValueError("route is not in the current feed")
+        stops = {r["stop_id"]: r for r in rows(archive, "stops.txt")}
+        times = sorted((r for r in rows(archive, "stop_times.txt") if r["trip_id"] == trip_id), key=lambda r: int(r["stop_sequence"]))
+        if not times or not any(r["stop_id"] == stop_id and int(r["stop_sequence"]) == stop_sequence for r in times):
+            raise ValueError("boarding stop is not on this trip")
+        if len(times) > 300:
+            raise ValueError("route has too many stops")
+        result = []
+        for row in times:
+            stop = stops.get(row["stop_id"])
+            if stop is None:
+                raise ValueError("route contains an unknown stop")
+            result.append({"id": f"{operator}:{row['stop_id']}", "name": stop["stop_name"],
+                           "lat": float(stop["stop_lat"]), "lon": float(stop["stop_lon"]),
+                           "boarding": row["stop_id"] == stop_id and int(row["stop_sequence"]) == stop_sequence})
+        return {"operator": operator, "route": route["route_short_name"] or route["route_long_name"],
+                "destination": trip.get("trip_headsign") or None, "stops": result,
+                "geometry": "straight_lines_between_stops", "source": FEEDS[operator]}
 
 
 def jr_category(service_date: date) -> tuple[int, str]:

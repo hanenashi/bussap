@@ -21,9 +21,9 @@ FILES = {
     "calendar.txt": "service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nregular,1,1,1,1,1,0,0,20261101,20261130\nholiday,0,0,0,0,0,0,0,20261101,20261130\n",
     "calendar_dates.txt": "service_id,date,exception_type\nregular,20261103,2\nholiday,20261103,1\n",
     "routes.txt": "route_id,route_short_name,route_long_name\nr1,,麻０５屯田線\n",
-    "stops.txt": "stop_id,stop_name,stop_lat,stop_lon,platform_code\ns1,地下鉄麻生駅,43.1,141.3,4\n",
+    "stops.txt": "stop_id,stop_name,stop_lat,stop_lon,platform_code\ns1,地下鉄麻生駅,43.1,141.3,4\ns2,屯田,43.2,141.4,\n",
     "trips.txt": "route_id,service_id,trip_id,trip_headsign\nr1,regular,t1,屯田６条１２丁目\nr1,holiday,t2,屯田６条１２丁目\nr1,regular,t3,地下鉄麻生駅\n",
-    "stop_times.txt": "trip_id,stop_id,stop_sequence,departure_time\nt1,s1,1,25:15:00\nt2,s1,1,10:30:00\nt3,s1,1,08:00:00\n",
+    "stop_times.txt": "trip_id,stop_id,stop_sequence,departure_time\nt1,s1,1,25:15:00\nt1,s2,2,25:35:00\nt2,s1,1,10:30:00\nt2,s2,2,10:50:00\nt3,s1,1,08:00:00\n",
 }
 
 
@@ -51,6 +51,26 @@ class DepartureTests(unittest.TestCase):
         result = departures.query_gtfs("chuo", "s1", date(2026, 11, 4), "24:00", 10, None, "屯田")
         self.assertEqual(len(result["departures"]), 1)
         self.assertEqual(result["departures"][0]["scheduled_at"], "2026-11-05T01:15:00+09:00")
+
+    def test_gtfs_route_uses_exact_trip_and_boarding_sequence(self):
+        result = departures.query_gtfs("chuo", "s1", date(2026, 11, 3), "00:00", 10, None, None)
+        ride = result["departures"][0]
+        route = departures.gtfs_route_details("chuo", ride["trip_id"].split(":", 1)[1], "s1", ride["stop_sequence"])
+        self.assertEqual([stop["name"] for stop in route["stops"]], ["地下鉄麻生駅", "屯田"])
+        self.assertEqual([stop["boarding"] for stop in route["stops"]], [True, False])
+        with self.assertRaisesRegex(ValueError, "boarding stop"):
+            departures.gtfs_route_details("chuo", "t2", "s1", 2)
+
+    def test_jr_route_joins_ordered_stations_to_markers(self):
+        patterns = {"patterns": [{"pattern": "1:2-0", "route": "local", "direction": "A→B", "boarding_position": "3"}]}
+        response = {"station_data": [{"station_id": 7, "name": "A"}, {"station_id": 8, "name": "B"}]}
+        markers = [{"operator": "jr", "station_id": 7, "lat": 43.0, "lon": 141.0, "boarding_position": "A"},
+                   {"operator": "jr", "station_id": 7, "lat": 43.1, "lon": 141.1, "boarding_position": "3"}]
+        with patch.object(departures, "jr_patterns", return_value=patterns), patch.object(departures, "post_json", return_value=response):
+            route = departures.jr_route_details(7, "1:2-0", 2, markers)
+        self.assertEqual([stop["boarding"] for stop in route["stops"]], [True, False])
+        self.assertEqual(route["stops"][0]["lat"], 43.1)
+        self.assertEqual(route["missing_coordinates"], 1)
 
     def test_coverage_and_jr_day_category(self):
         result = departures.query_gtfs("chuo", "s1", date(2026, 12, 1), "00:00", 10, None, None)

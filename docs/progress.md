@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-03 — Departure route details
+
+Each departure now opens its ordered stop list. Chuo and Jotetsu use the exact GTFS trip and boarding sequence; JR uses the selected Ekibus course and joins station IDs to the JR marker snapshot. The route map connects adjacent stop coordinates with straight dashed segments and explicitly labels the line as approximate. Stops without JR marker coordinates remain in the list and leave gaps in the line. The existing tap-to-filter behavior on Chuo and Jotetsu departure rows remains separate from the new **経路を見る** action. Route details need a connection; the service worker still caches only previously viewed timetables.
+
+Checks: eleven Python tests pass in the gateway environment, including route stop order and JR marker matching. The restarted API returned a route with exactly one boarding stop for live Chuo, Jotetsu, and JR departures. Chromium at 390 and 360 px opened Chuo and JR route details, drew their maps, and returned to the timetable without page errors or horizontal overflow. The public gateway still requires a session for the new API endpoint.
+
 ## 2026-11-03 — Signed-in PDF and public app icons
 
 The owner asked to restore the historical PDF for the two enrolled users and reported that the installed app icon had disappeared. The Pixel screenshot inbox contained only an unrelated May screenshot, so diagnosis used the gateway response: unauthenticated requests for the manifest and both icon PNGs returned 401. The gateway now serves only those branding files without a session, and the login page links the same manifest and icon. Versioned icon URLs in the manifest prompt a fresh Android fetch. App JavaScript, APIs, and the PDF still require a valid session; the PDF viewer and bytes return 404 to unauthenticated visitors.

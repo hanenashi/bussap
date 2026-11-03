@@ -140,6 +140,24 @@ def dispatch(path, params):
         limit = bounded_int(one(params, "limit", default="30"), "limit", 1, 50)
         key = ("patterns", station_id, limit)
         return CACHE.get_or_make(key, 900, lambda: departures.jr_patterns(station_id, limit))
+    if path == "/api/route-details":
+        operator = one(params, "operator", required=True)
+        if operator not in (*departures.FEEDS, "jr"):
+            raise ValueError("unknown operator")
+        stop = one(params, "stop", required=True)
+        if operator == "jr":
+            station_id = bounded_int(stop, "stop", 1, 999999999)
+            pattern = one(params, "pattern", required=True)
+            if len(pattern) > 80:
+                raise ValueError("pattern too long")
+            course_id = bounded_int(one(params, "course", required=True), "course", 1, 999999999)
+            key = ("jr-route", station_id, pattern, course_id)
+            return CACHE.get_or_make(key, 3600, lambda: departures.jr_route_details(station_id, pattern, course_id, map_data.catalog()[0]))
+        trip = one(params, "trip", required=True)
+        if len(stop) > 80 or len(trip) > 160:
+            raise ValueError("stop or trip ID too long")
+        sequence = bounded_int(one(params, "sequence", required=True), "sequence", 0, 10000)
+        return departures.gtfs_route_details(operator, trip, stop, sequence)
     if path == "/api/departures":
         operator = one(params, "operator", required=True)
         if operator not in (*departures.FEEDS, "jr"):

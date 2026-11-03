@@ -76,6 +76,19 @@
       <div id="departure-results" class="departure-list"></div>
       <div id="source-note" class="source-note"></div>
     </section>
+
+    <section id="route-panel" class="panel" hidden aria-live="polite">
+      <button type="button" class="text-button route-back" id="route-back">← 時刻表に戻る</button>
+      <div class="intro"><span class="eyebrow">ROUTE DETAILS</span><h2 id="route-title"></h2><p id="route-subtitle"></p></div>
+      <div id="route-status" class="status" hidden></div>
+      <div id="route-content" hidden>
+        <div id="route-map" role="application" aria-label="停留所を結んだ概略地図"></div>
+        <p class="route-caveat">停留所を直線で結んだ目安です。実際の走行道路とは異なります。</p>
+        <h3 class="route-stops-title">停車する停留所</h3>
+        <ol id="route-stops" class="route-stops"></ol>
+        <p id="route-source" class="source-note"></p>
+      </div>
+    </section>
   </main>
 </body>
 </html>

@@ -1,7 +1,8 @@
 const $ = (id) => document.getElementById(id);
 const names = { chuo: "北海道中央バス", jr: "JR北海道バス", jotetsu: "じょうてつ" };
 const operators = ["chuo", "jr", "jotetsu"];
-const state = { operator: "all", stop: null, pattern: null, routeFilter: null, date: null, searchSerial: 0, loadSerial: 0 };
+const state = { operator: "all", stop: null, pattern: null, routeFilter: null, date: null, searchSerial: 0, loadSerial: 0, routeSerial: 0 };
+let routeMap, routeLayer, routeReturnScroll = 0;
 const tokyoParts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
 function tokyoNow() {
@@ -21,7 +22,7 @@ function locationLabel(stop) {
   const km = distanceFromSapporo(stop);
   return km == null ? "" : `札幌駅から直線約${km < 10 ? km.toFixed(1) : Math.round(km)}km`;
 }
-function setPanel(panel) { for (const id of ["map-panel", "search-panel", "pattern-panel", "departure-panel"]) $(id).hidden = id !== panel; $("favorites-section").hidden = panel !== "map-panel" || !favorites.length; if (panel === "map-panel") BUSSAPMap.show(); }
+function setPanel(panel) { for (const id of ["map-panel", "search-panel", "pattern-panel", "departure-panel", "route-panel"]) $(id).hidden = id !== panel; $("favorites-section").hidden = panel !== "map-panel" || !favorites.length; if (panel === "map-panel") BUSSAPMap.show(); }
 function setStatus(id, message, error = false) { const el = $(id); el.hidden = !message; el.textContent = message || ""; el.classList.toggle("error", error); }
 function clear(el) { el.replaceChildren(); }
 function make(tag, className, value) { const el = document.createElement(tag); if (className) el.className = className; if (value != null) el.textContent = value; return el; }
@@ -188,6 +189,7 @@ function updateDateButtons() {
 }
 async function loadDepartures() {
   if (!state.stop || state.stop.operator === "jr" && !state.pattern) return;
+  ++state.routeSerial;
   const serial = ++state.loadSerial, stop = state.stop;
   setPanel("departure-panel"); updateDateButtons();
   const position = stop.operator === "jr" ? state.pattern.boarding_position : stop.boarding_position;
@@ -230,6 +232,7 @@ async function loadDepartures() {
     const sourceNotice = stop.operator === "jr" ? jrNotice(data) : data.warning;
     setStatus("departure-status", [sourceNotice, offlineNotice, departures.length ? "" : emptyMessage].filter(Boolean).join(" · "), Boolean(data.warning && stop.operator !== "jr"));
     for (const departure of departures) {
+      const entry = make("div", "departure-entry");
       const row = make(stop.operator === "jr" ? "div" : "button", "departure-row");
       if (stop.operator !== "jr") row.type = "button";
       const main = make("div", "departure-main"), line = make("div", "departure-line");
@@ -247,7 +250,15 @@ async function loadDepartures() {
         row.setAttribute("aria-label", `${displayTime(departure.scheduled_time)} ${shortRoute} ${fullDestination}。${state.routeFilter === shortRoute ? "すべての路線を表示" : `${shortRoute}のみ表示`}`);
         row.addEventListener("click", () => { state.routeFilter = state.routeFilter === shortRoute ? null : shortRoute; loadDepartures(); });
       }
-      $("departure-results").append(row);
+      entry.append(row);
+      if (stop.operator === "jr" ? /^jr:\d+$/.test(departure.course_id || "") : departure.trip_id && Number.isInteger(departure.stop_sequence)) {
+        const detail = make("button", "route-detail-button", "経路を見る ›");
+        detail.type = "button";
+        detail.setAttribute("aria-label", `${displayTime(departure.scheduled_time)} ${shortRoute}の経路を見る`);
+        detail.addEventListener("click", () => showRouteDetails(departure, stop, state.pattern));
+        entry.append(detail);
+      }
+      $("departure-results").append(entry);
     }
     const note = $("source-note");
     note.append(make("span", "", `出典: ${names[stop.operator]}時刻表`));
@@ -264,7 +275,77 @@ async function loadDepartures() {
   }
 }
 
-function resetSearch() { ++state.loadSerial; ++state.searchSerial; state.stop = null; state.pattern = null; state.routeFilter = null; $("stop-search").value = ""; setPanel("map-panel"); }
+function drawRoute(data) {
+  if (!routeMap) {
+    routeMap = L.map("route-map", { zoomControl: true, preferCanvas: true, zoomSnap: 0.5 });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      minZoom: 10, maxZoom: 19, maxNativeZoom: 19,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+      updateWhenIdle: true, keepBuffer: 1,
+    }).addTo(routeMap);
+    routeLayer = L.layerGroup().addTo(routeMap);
+  }
+  routeLayer.clearLayers();
+  const color = { chuo: "#2e7bc7", jr: "#d75e52", jotetsu: "#12a797" }[data.operator];
+  const points = [];
+  data.stops.forEach((stop, index) => {
+    if (stop.lat == null || stop.lon == null) return;
+    const point = [stop.lat, stop.lon];
+    points.push(point);
+    const next = data.stops[index + 1];
+    if (next && next.lat != null && next.lon != null) {
+      L.polyline([point, [next.lat, next.lon]], { color, weight: 4, opacity: 0.85, dashArray: "8 6" }).addTo(routeLayer);
+    }
+    const marker = L.circleMarker(point, { radius: stop.boarding ? 9 : 5, color: "#fff", weight: 2, fillColor: color, fillOpacity: 1 }).addTo(routeLayer);
+    marker.bindTooltip(make("span", "", `${index + 1}. ${stop.name}${stop.boarding ? " · 乗車" : ""}`));
+  });
+  routeMap.invalidateSize();
+  if (points.length > 1) routeMap.fitBounds(points, { padding: [24, 24], maxZoom: 16 });
+  else if (points.length) routeMap.setView(points[0], 15);
+  else routeMap.setView([43.066, 141.352], 12);
+}
+
+async function showRouteDetails(departure, stop, pattern) {
+  const serial = ++state.routeSerial;
+  routeReturnScroll = window.scrollY;
+  setPanel("route-panel");
+  window.scrollTo(0, 0);
+  $("route-title").textContent = departure.route || "経路";
+  $("route-subtitle").textContent = `${displayTime(departure.scheduled_time)}発 · ${departure.destination || "行先不明"}`;
+  $("route-content").hidden = true;
+  setStatus("route-status", "経路を読み込んでいます…");
+  const sourceStopId = stop.operator === "jr" ? String(stop.station_id || stop.id.split(":")[1]) : stop.id.split(":").slice(1).join(":");
+  const params = { operator: stop.operator, stop: sourceStopId };
+  if (stop.operator === "jr") {
+    params.pattern = pattern.pattern;
+    params.course = departure.course_id.split(":")[1];
+  } else {
+    params.trip = departure.trip_id.split(":").slice(1).join(":");
+    params.sequence = departure.stop_sequence;
+  }
+  try {
+    const data = await get("/api/route-details", params);
+    if (serial !== state.routeSerial) return;
+    $("route-title").textContent = data.route || departure.route || "経路";
+    $("route-subtitle").textContent = `${displayTime(departure.scheduled_time)}発 · ${data.destination || departure.destination || "行先不明"}`;
+    clear($("route-stops"));
+    data.stops.forEach((item, index) => {
+      const li = make("li", item.boarding ? "boarding" : "");
+      li.append(make("span", "route-stop-number", String(index + 1)), make("span", "route-stop-name", item.name));
+      if (item.boarding) li.append(make("span", "route-boarding-label", "ここから乗車"));
+      $("route-stops").append(li);
+    });
+    $("route-source").textContent = `${names[data.operator]}の停留所順を使用${data.missing_coordinates ? ` · ${data.missing_coordinates}地点は地図上の位置がありません` : ""}`;
+    $("route-content").hidden = false;
+    setStatus("route-status", "");
+    drawRoute(data);
+  } catch {
+    if (serial === state.routeSerial) setStatus("route-status", navigator.onLine ? "経路を読み込めませんでした。時刻表に戻って、もう一度お試しください。" : "オフラインでは経路を読み込めません。", true);
+  }
+}
+
+function resetSearch() { ++state.loadSerial; ++state.searchSerial; ++state.routeSerial; state.stop = null; state.pattern = null; state.routeFilter = null; $("stop-search").value = ""; setPanel("map-panel"); }
+$("route-back").addEventListener("click", () => { ++state.routeSerial; setPanel("departure-panel"); window.scrollTo(0, routeReturnScroll); });
 $("stop-search").addEventListener("input", queueSearch);
 document.querySelectorAll("[data-operator]").forEach(button => button.addEventListener("click", () => {
   state.operator = button.dataset.operator;
