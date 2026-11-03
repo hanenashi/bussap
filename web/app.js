@@ -21,13 +21,89 @@ function locationLabel(stop) {
   const km = distanceFromSapporo(stop);
   return km == null ? "" : `札幌駅から直線約${km < 10 ? km.toFixed(1) : Math.round(km)}km`;
 }
-function setPanel(panel) { for (const id of ["map-panel", "search-panel", "pattern-panel", "departure-panel"]) $(id).hidden = id !== panel; if (panel === "map-panel") BUSSAPMap.show(); }
+function setPanel(panel) { for (const id of ["map-panel", "search-panel", "pattern-panel", "departure-panel"]) $(id).hidden = id !== panel; $("favorites-section").hidden = panel !== "map-panel" || !favorites.length; if (panel === "map-panel") BUSSAPMap.show(); }
 function setStatus(id, message, error = false) { const el = $(id); el.hidden = !message; el.textContent = message || ""; el.classList.toggle("error", error); }
 function clear(el) { el.replaceChildren(); }
 function make(tag, className, value) { const el = document.createElement(tag); if (className) el.className = className; if (value != null) el.textContent = value; return el; }
 function displayTime(value) { const [hour, minute] = value.split(":"); return `${String(Number(hour) % 24).padStart(2, "0")}:${minute}`; }
 function routeLabel(name) { return name.match(/\[([^\]]+)\]/)?.[1] || name.match(/^[^0-9０-９]{0,3}[0-9０-９]+[A-Za-zＡ-Ｚａ-ｚ]?/u)?.[0] || name.split(/[・･]/)[0]; }
 async function get(path, params) { const response = await fetch(`${path}?${new URLSearchParams(params)}`, { cache: "no-store" }); const body = await response.json(); if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`); return body; }
+
+const FAVORITES_KEY = "bussap.favorites.v1";
+const MAX_FAVORITES = 12;
+function cleanFavorite(item) {
+  const source = item?.stop;
+  if (!source || !operators.includes(source.operator) || typeof source.id !== "string" ||
+      !source.id.startsWith(`${source.operator}:`) || source.id.length > 100 ||
+      typeof source.name !== "string" || !source.name || source.name.length > 100) return null;
+  const stop = { id: source.id, name: source.name, operator: source.operator,
+    lat: Number.isFinite(source.lat) ? source.lat : null, lon: Number.isFinite(source.lon) ? source.lon : null,
+    boarding_position: source.boarding_position == null ? null : String(source.boarding_position).slice(0, 20) };
+  if (source.operator === "jr" && source.station_id != null) stop.station_id = String(source.station_id).slice(0, 20);
+  let pattern = null;
+  if (source.operator === "jr") {
+    const value = item.pattern;
+    if (!value || typeof value.pattern !== "string" || !value.pattern || value.pattern.length > 80 ||
+        typeof value.route !== "string" || value.route.length > 100 ||
+        value.direction != null && (typeof value.direction !== "string" || value.direction.length > 100)) return null;
+    pattern = { pattern: value.pattern, route: value.route, direction: value.direction || "",
+      boarding_position: value.boarding_position == null ? null : String(value.boarding_position).slice(0, 20) };
+  }
+  const routeFilter = source.operator !== "jr" && typeof item.routeFilter === "string" && item.routeFilter.length <= 40 ? item.routeFilter : null;
+  return { stop, pattern, routeFilter };
+}
+function favoriteKey(item) { return JSON.stringify([item.stop.id, item.pattern?.pattern || "", item.routeFilter || ""]); }
+function readFavorites() {
+  try {
+    const value = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+    if (!Array.isArray(value)) return [];
+    const unique = new Map();
+    for (const raw of value) { const item = cleanFavorite(raw); if (item) unique.set(favoriteKey(item), item); }
+    return [...unique.values()].slice(0, MAX_FAVORITES);
+  } catch { return []; }
+}
+let favorites = readFavorites();
+function currentFavorite() { return state.stop ? cleanFavorite({ stop: state.stop, pattern: state.pattern, routeFilter: state.routeFilter }) : null; }
+function updateFavoriteButton() {
+  const item = currentFavorite(), saved = item && favorites.some(entry => favoriteKey(entry) === favoriteKey(item));
+  const button = $("favorite-button");
+  button.disabled = !item;
+  button.setAttribute("aria-pressed", String(Boolean(saved)));
+  button.textContent = saved ? "★ 保存済み · タップで解除" : `☆ ${state.routeFilter ? `${state.routeFilter}を保存` : state.pattern ? "この路線を保存" : "この乗り場を保存"}`;
+}
+function renderFavorites() {
+  clear($("favorites-list"));
+  for (const item of favorites) {
+    const stop = item.stop, position = item.pattern?.boarding_position || stop.boarding_position;
+    const title = `${stop.name}${position ? ` · ${position}番のりば` : ""}`;
+    const detail = `${names[stop.operator]} · ${item.pattern ? `${routeLabel(item.pattern.route)} → ${item.pattern.direction || "行先不明"}` : item.routeFilter ? `${item.routeFilter}のバス` : "すべての路線"}`;
+    const button = make("button", "favorite-card"); button.type = "button";
+    const content = make("span"); content.append(make("strong", "", title), make("small", "", detail));
+    button.append(content, make("span", "chevron", "›"));
+    button.addEventListener("click", () => openFavorite(item));
+    $("favorites-list").append(button);
+  }
+  $("favorites-section").hidden = $("map-panel").hidden || !favorites.length;
+  updateFavoriteButton();
+}
+function toggleFavorite() {
+  const item = currentFavorite();
+  if (!item) return;
+  const key = favoriteKey(item), saved = favorites.some(entry => favoriteKey(entry) === key);
+  const next = saved ? favorites.filter(entry => favoriteKey(entry) !== key) : [item, ...favorites].slice(0, MAX_FAVORITES);
+  try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(next)); }
+  catch { $("favorite-button").textContent = "このブラウザでは保存できません"; return; }
+  favorites = next;
+  renderFavorites();
+}
+function openFavorite(item) {
+  clearTimeout(searchTimer); ++state.searchSerial;
+  $("stop-search").value = "";
+  state.stop = { ...item.stop }; state.pattern = item.pattern ? { ...item.pattern } : null;
+  state.routeFilter = item.routeFilter; state.date = tokyoNow().date;
+  BUSSAPMap.focus(state.stop);
+  loadDepartures();
+}
 
 function resultButton(title, detail, action) {
   const button = make("button", "result-button"); button.type = "button";
@@ -41,7 +117,7 @@ function queueSearch() { ++state.searchSerial; clearTimeout(searchTimer); search
 async function search() {
   const term = $("stop-search").value.trim();
   const serial = ++state.searchSerial;
-  state.stop = null; state.pattern = null; setPanel(term ? "search-panel" : "map-panel"); clear($("search-results"));
+  state.stop = null; state.pattern = null; state.routeFilter = null; setPanel(term ? "search-panel" : "map-panel"); clear($("search-results"));
   if (term.length < 2) { setStatus("search-status", term ? "2文字以上入力してください。" : ""); return; }
   setStatus("search-status", "バス停を探しています…");
   const choices = state.operator === "all" ? operators : [state.operator];
@@ -109,6 +185,7 @@ async function loadDepartures() {
   const position = stop.operator === "jr" ? state.pattern.boarding_position : stop.boarding_position;
   $("selected-stop").textContent = `${stop.name}${position ? ` · ${position}番のりば` : ""}`;
   $("selected-detail").textContent = `${names[stop.operator]}${state.pattern ? ` · ${state.pattern.route} · ${state.pattern.direction || "行先不明"}` : ""}${locationLabel(stop) ? ` · ${locationLabel(stop)}` : ""}`;
+  updateFavoriteButton();
   $("route-filter-bar").hidden = !state.routeFilter;
   $("route-filter-label").textContent = state.routeFilter ? `${state.routeFilter}のみ表示中` : "";
   clear($("departure-results")); clear($("source-note")); setStatus("departure-status", "時刻を読み込んでいます…");
@@ -160,7 +237,12 @@ async function loadDepartures() {
     const url = stop.operator === "jr" ? "https://www.jrhokkaidobus.com/timetable/routebus_sapporo/" : data.source;
     if (url) { const link = make("a", "", "公式・データ元を確認 ↗"); link.href = url; link.target = "_blank"; link.rel = "noopener noreferrer"; note.append(document.createTextNode(" · "), link); }
     if (data.feed_fetched_at) note.append(make("span", "", ` · 取得 ${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(data.feed_fetched_at))}`));
-  } catch { if (serial === state.loadSerial) setStatus("departure-status", "時刻を読み込めませんでした。更新を押して、もう一度お試しください。", true); }
+  } catch (error) {
+    if (serial === state.loadSerial) {
+      const stale = /unknown (chuo|jotetsu) stop ID|JR pattern is not listed at this stop/.test(error.message);
+      setStatus("departure-status", stale ? "この乗り場・路線は現在のデータにありません。地図から選び直してください。" : "時刻を読み込めませんでした。更新を押して、もう一度お試しください。", true);
+    }
+  }
 }
 
 function resetSearch() { ++state.loadSerial; ++state.searchSerial; state.stop = null; state.pattern = null; state.routeFilter = null; $("stop-search").value = ""; setPanel("map-panel"); }
@@ -179,4 +261,7 @@ $("date-input").addEventListener("change", event => { if (event.target.value) { 
 $("calendar-button").addEventListener("click", () => { const input = $("date-input"); input.showPicker?.(); });
 $("refresh-button").addEventListener("click", loadDepartures);
 $("clear-route-filter").addEventListener("click", () => { state.routeFilter = null; loadDepartures(); });
+$("favorite-button").addEventListener("click", toggleFavorite);
+window.addEventListener("storage", event => { if (event.key === FAVORITES_KEY) { favorites = readFavorites(); renderFavorites(); } });
 BUSSAPMap.init(selectStop);
+renderFavorites();

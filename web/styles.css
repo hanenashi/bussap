@@ -8,3 +8,16 @@ button.departure-row:focus-visible{outline:3px solid #97c5ee;outline-offset:-3px
 .departure-line .destination{min-width:0;flex:1 1 0}
 .route-filter-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;margin:0 0 12px;border-radius:10px;background:#edf5fc;color:#1d5f9c;font-size:14px;font-weight:700}
 .route-filter-bar button{min-height:36px;padding:0 6px;border:0;background:transparent;color:#1d5f9c;font:inherit;text-decoration:underline;white-space:nowrap}
+
+.favorites-section{margin:-5px 0 22px}
+.favorites-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:9px}
+.favorites-heading h2{margin:0;font-size:17px;letter-spacing:-.02em}
+.favorites-heading span{color:#7b8795;font-size:11px}
+.favorites-list{display:grid;gap:8px}
+.favorite-card{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:66px;padding:11px 14px;border:1px solid #dce6f1;border-radius:11px;background:#f5f9fd;color:#0b1b33;text-align:left;font:inherit}
+.favorite-card strong{display:block;font-size:16px;line-height:1.35;overflow-wrap:anywhere}
+.favorite-card small{display:block;margin-top:3px;color:#617185;font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+.favorite-card .chevron{flex:none;color:#2e7bc7;font-size:24px}
+.favorite-card:active{background:#eaf3fb}
+.favorite-button{display:inline-flex;align-items:center;min-height:44px;margin:-8px 0 18px;padding:0 14px;border:1.5px solid #a9bfd5;border-radius:10px;background:#fff;color:#256fb5;font:700 14px system-ui,sans-serif}
+.favorite-button[aria-pressed="true"]{border-color:#2e7bc7;background:#edf5fc;color:#1c65a5}

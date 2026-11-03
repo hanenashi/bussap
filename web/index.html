@@ -29,6 +29,11 @@
       </div>
     </section>
 
+    <section id="favorites-section" class="favorites-section" aria-label="保存した乗り場" hidden>
+      <div class="favorites-heading"><h2>保存した乗り場</h2><span>この端末のみ</span></div>
+      <div id="favorites-list" class="favorites-list"></div>
+    </section>
+
     <section id="map-panel" class="map-panel" aria-label="バス停マップ">
       <div class="map-frame">
         <div id="map" role="application" aria-label="札幌のバス停地図"></div>
@@ -56,6 +61,7 @@
 
     <section id="departure-panel" class="panel" hidden aria-live="polite">
       <div class="section-head stop-head"><div><span class="eyebrow">BOARDING STOP</span><h2 id="selected-stop"></h2><p id="selected-detail"></p></div><button class="text-button" type="button" id="change-stop">地図に戻る ›</button></div>
+      <button type="button" id="favorite-button" class="favorite-button" aria-pressed="false">☆ この乗り場を保存</button>
       <div class="date-bar">
         <button type="button" id="today-button" class="date-button active">今日</button>
         <button type="button" id="tomorrow-button" class="date-button">明日</button>

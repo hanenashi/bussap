@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-11-03 — Saved boarding points
+
+Goal: let one phone save and reopen its usual exact boarding points without searching again. Chuo/Jotetsu favorites may include a selected line filter; JR favorites must include the chosen route pattern and boarding position.
+
+Source and assumptions: use the app's existing source-specific stop IDs and JR pattern IDs. Store a small validated list in that browser's localStorage only; no account, server write, or cross-phone sync is needed for this personal first slice. A saved item is a shortcut to a fresh departure query, not a cached timetable.
+
+Implementation: a save/remove button on the full departure screen and compact shortcuts above the home map. A GTFS favorite keeps the exact stop ID and optional chosen line; a JR favorite keeps the station/boarding point and pattern. The list is bounded to 12 and validated on read. Storage failure displays a plain message, and a source ID that later disappears displays a reselect message.
+
+Checks: mobile Chromium at 393 × 852 saved 真駒内駅 6番 and 9番 as distinct items, reopened 6番 after reload, and removed it without affecting 9番. A 南５５ favorite reopened with only that line; a JR 新１２ favorite reopened its exact route at 320 × 720 with `cant promise correct times now` and no horizontal overflow. Blocking localStorage writes gave a clear message without adding a card or page error. The five Python tests, JavaScript syntax, `git diff --check`, and live HTTPS page check passed. A 320 px departure screenshot and the home favorites screenshot were visually inspected. Physical Pixel QA remains deferred while the phone is on cellular.
+
+Next: after this slice, make the app installable and cache already fetched timetables for offline use.
+
 ## 2026-11-03 — Sharper PDF close-ups
 
 The owner found that the 8× PDF limit still left labels hard to read. The viewer now allows 32× zoom. At close zoom it redraws the visible phone-sized section directly from the vector PDF after movement settles, rather than stretching the overview canvas. The overview remains visible during a drag. No new controls or source data were added.
