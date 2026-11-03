@@ -34,6 +34,7 @@ JR_ENDPOINT = "https://ekibus-api.city.sapporo.jp/Get_station_linelist_timetable
 JR_BASE = "https://ekibus-api.city.sapporo.jp"
 REQUIRED_GTFS = {"agency.txt", "calendar.txt", "calendar_dates.txt", "feed_info.txt", "routes.txt", "stops.txt", "stop_times.txt", "trips.txt"}
 HOLIDAYS = json.loads((ROOT / "fixtures" / "japan_holidays_2026_2027.json").read_text(encoding="utf-8"))
+JR_REVIEWED_REVISION = json.loads((ROOT / "fixtures" / "jr_local_samples.json").read_text(encoding="utf-8"))["revision"]
 
 
 def rows(archive: zipfile.ZipFile, name: str):
@@ -208,6 +209,20 @@ def query_jr(station_id: int, pattern: str, service_date: date, after: str, limi
     lines = table.get("line_list", [])
     if len(lines) != 1 or lines[0].get("line_name") != pattern_info["route"]:
         raise ValueError("JR pattern did not select exactly one route")
+    if table.get("date_of_revision") != JR_REVIEWED_REVISION:
+        return {
+            "operator": "jr",
+            "service_date": service_date.isoformat(),
+            "status": "source_revision_changed_review_required",
+            "warning": "Ekibus revision changed; review routes and compare departures with the operator before using this source.",
+            "stop": {"id": f"jr:{station_id}", "name": table["start"].get("station_name"), "boarding_position": pattern_info["boarding_position"]},
+            "route": lines[0].get("line_name"),
+            "pattern": pattern,
+            "source_revision": table.get("date_of_revision"),
+            "reviewed_revision": JR_REVIEWED_REVISION,
+            "source": JR_ENDPOINT,
+            "departures": [],
+        }
     day = next((r for r in lines[0].get("dia_list", []) if r["dia_flg"] == category), None)
     if day is None:
         raise ValueError(f"JR category {category} unavailable for this route")
@@ -225,6 +240,7 @@ def query_jr(station_id: int, pattern: str, service_date: date, after: str, limi
         "day_category": category,
         "day_category_label": label,
         "source_revision": table.get("date_of_revision"),
+        "reviewed_revision": JR_REVIEWED_REVISION,
         "source": JR_ENDPOINT,
         "departures": [{"route": lines[0].get("line_name"), "destination": r.get("course_name"), "scheduled_time": r["time"], "scheduled_at": None, "course_id": f"jr:{r.get('course_id')}"} for r in times[:limit]],
     }

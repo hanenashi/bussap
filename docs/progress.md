@@ -1,5 +1,21 @@
 # Progress
 
+## 2026-11-03 — JR date and season audit
+
+Goal: test more ordinary JR local patterns, find any first/third/fifth versus second/fourth Saturday difference, and determine whether operator notices establish a trustworthy season or exception rule.
+
+Sources: Sapporo Ekibus local timetable endpoint and JR Hokkaido Bus's own timetable PDFs and service notices. Use bounded requests and compact observations.
+
+Assumptions: the April 2026 timetable revision may remain current in November, but the API's four day tabs alone do not prove it. Special service and winter changes may need an operator notice or explicit coverage period.
+
+Checks: compare selected patterns with the current official PDFs, inspect revision/holiday notices, and try the documented Ekibus holiday endpoint. Record mismatches and unknowns. No phone service or UI in this slice.
+
+Findings: seven more ordinary 札幌駅前 patterns all returned revision 20260401. All seven had the same first/third/fifth and second/fourth Saturday lists; one 快速６４ pattern had weekday departures but no weekend departures. The current operator PDF index also points to April 2026 timetables. The city's `get_holiday` endpoint returned false for 2027-01-01 and 2027-03-22, despite both being national holidays in the Cabinet Office calendar. See [source-inventory.md](source-inventory.md) for scope and examples.
+
+Change: the JR CLI now withholds departures if Ekibus reports a revision other than the reviewed `20260401`. A test simulating a changed revision passes. The existing `day_category_candidate_unverified_for_date` status remains for the reviewed revision.
+
+Blocker: neither Ekibus timetable response nor the operator index gives an end date or future exception schedule. Day-category times cannot yet be promoted to verified departures for an arbitrary requested date. The next practical check is Busdia or a new operator notice/PDF at the next revision; special year-end service needs explicit operator evidence. No phone service was started.
+
 ## 2026-11-03 — Unified departure CLI
 
 Goal: query scheduled departures for an exact boarding stop and service date through one CLI for all three operators.
