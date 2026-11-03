@@ -1,5 +1,17 @@
 # Progress
 
+## 2026-11-03 — Installable shell and viewed-timetable cache
+
+Goal: make BUSSAP installable on a phone and let a saved boarding point reopen the timetable for a date this browser already viewed when Beechan or the network is unavailable.
+
+Sources and assumptions: use a same-origin service worker, browser Cache Storage, the existing read-only API, and a web app manifest. Only successful full departure queries are cached; static app files are precached. OpenStreetMap tiles, the historical PDF, and unseen stop searches remain online-only. Offline responses must show retrieval time and may contain only the previously fetched range, so they must not imply that an absent bus never runs.
+
+Implementation: a manifest with 192/512 px icons, a same-origin service worker, and a bounded Cache Storage list of 30 previously viewed full timetables. Successful live responses refresh the cache; an unreviewed JR source revision clears all JR cache entries. Offline results show retrieval time, preserve JR's `cant promise correct times now` warning, filter past times, and explicitly say they cover only the previously displayed range. An unseen date reports that no saved timetable exists. The app shell works offline; OSM tiles, the PDF, and new stop searches remain online-only.
+
+Checks: local Chromium showed an active service worker and 10 static shell cache entries. A separate test service was stopped after saving 札幌駅 25番; the browser then reloaded the shell, reopened cached departures with an offline timestamp, showed a clear message for an unseen date, and returned to live data after the test service restarted. The same stopped-service test reopened JR 新１２ at 320 px with its exact warning plus offline timestamp. Both views had no page errors or horizontal overflow. The icons were checked at 192 and 512 px. On the tailnet HTTPS origin, Chromium reported a secure context, a manifest with no parse errors, and an active service worker. Existing tests and static checks passed. Physical Pixel install/airplane-mode QA remains deferred until device access is available.
+
+Next: field-test install and offline use on the Pixel when ADB/Wi-Fi is available; then consider a compact offline stop catalog if daily use shows a need.
+
 ## 2026-11-03 — Saved boarding points
 
 Goal: let one phone save and reopen its usual exact boarding points without searching again. Chuo/Jotetsu favorites may include a selected line filter; JR favorites must include the chosen route pattern and boarding position.

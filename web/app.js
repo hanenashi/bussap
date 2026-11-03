@@ -26,6 +26,7 @@ function setStatus(id, message, error = false) { const el = $(id); el.hidden = !
 function clear(el) { el.replaceChildren(); }
 function make(tag, className, value) { const el = document.createElement(tag); if (className) el.className = className; if (value != null) el.textContent = value; return el; }
 function displayTime(value) { const [hour, minute] = value.split(":"); return `${String(Number(hour) % 24).padStart(2, "0")}:${minute}`; }
+function serviceMinutes(value) { const [hour, minute] = value.split(":"); return Number(hour) * 60 + Number(minute); }
 function routeLabel(name) { return name.match(/\[([^\]]+)\]/)?.[1] || name.match(/^[^0-9０-９]{0,3}[0-9０-９]+[A-Za-zＡ-Ｚａ-ｚ]?/u)?.[0] || name.split(/[・･]/)[0]; }
 async function get(path, params) { const response = await fetch(`${path}?${new URLSearchParams(params)}`, { cache: "no-store" }); const body = await response.json(); if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`); return body; }
 
@@ -199,10 +200,18 @@ async function loadDepartures() {
     if (serial !== state.loadSerial) return;
     if (data.status === "outside_feed_coverage") { setStatus("departure-status", `この日付の時刻表はありません。掲載期間: ${data.coverage.from}〜${data.coverage.through}`); return; }
     if (data.status === "source_revision_changed_review_required") { setStatus("departure-status", "JRの時刻表が更新されました。確認が終わるまで時刻を表示できません。", true); return; }
-    let emptyMessage = state.routeFilter
+    const departures = data.offline_cached_at
+      ? data.departures.filter(departure => serviceMinutes(departure.scheduled_time) >= serviceMinutes(params.after))
+      : data.departures;
+    const offlineNotice = data.offline_cached_at
+      ? `オフライン: ${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(data.offline_cached_at))}に取得した時刻表です。前回表示した範囲のみ表示します。`
+      : "";
+    let emptyMessage = data.offline_cached_at
+      ? "保存済みの範囲に、この時間以降の便はありません。接続時に更新してください。"
+      : state.routeFilter
       ? `${state.routeFilter}は、この時間以降の便がありません。明日の時刻も確認できます。`
       : "この乗り場では、この時間以降の便はありません。明日の時刻を見るか、別の乗り場を選んでください。";
-    if (!data.departures.length && state.date === now.date && stop.operator !== "jr") {
+    if (!departures.length && !data.offline_cached_at && state.date === now.date && stop.operator !== "jr") {
       try {
         const fullDay = await get("/api/departures", { ...params, after: "00:00" });
         if (serial !== state.loadSerial) return;
@@ -211,8 +220,8 @@ async function loadDepartures() {
         }
       } catch { /* Keep the useful empty-state message if the second lookup fails. */ }
     }
-    setStatus("departure-status", data.warning || (data.departures.length ? "" : emptyMessage), Boolean(data.warning));
-    for (const departure of data.departures) {
+    setStatus("departure-status", [data.warning, offlineNotice, departures.length ? "" : emptyMessage].filter(Boolean).join(" · "), Boolean(data.warning));
+    for (const departure of departures) {
       const row = make(stop.operator === "jr" ? "div" : "button", "departure-row");
       if (stop.operator !== "jr") row.type = "button";
       const main = make("div", "departure-main"), line = make("div", "departure-line");
@@ -240,7 +249,8 @@ async function loadDepartures() {
   } catch (error) {
     if (serial === state.loadSerial) {
       const stale = /unknown (chuo|jotetsu) stop ID|JR pattern is not listed at this stop/.test(error.message);
-      setStatus("departure-status", stale ? "この乗り場・路線は現在のデータにありません。地図から選び直してください。" : "時刻を読み込めませんでした。更新を押して、もう一度お試しください。", true);
+      const uncached = error.message.includes("この日付の保存済み時刻表がありません");
+      setStatus("departure-status", stale ? "この乗り場・路線は現在のデータにありません。地図から選び直してください。" : uncached ? error.message : "時刻を読み込めませんでした。更新を押して、もう一度お試しください。", true);
     }
   }
 }
@@ -265,3 +275,4 @@ $("favorite-button").addEventListener("click", toggleFavorite);
 window.addEventListener("storage", event => { if (event.key === FAVORITES_KEY) { favorites = readFavorites(); renderFavorites(); } });
 BUSSAPMap.init(selectStop);
 renderFavorites();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});

@@ -44,6 +44,10 @@ WEB_DIR = Path(__file__).resolve().parents[1] / "web"
 NETWORK_PDF = WEB_DIR.parent / " sapporobus.pdf"
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
+    "/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json; charset=utf-8"),
+    "/sw.js": ("sw.js", "text/javascript; charset=utf-8"),
+    "/icons/icon-192.png": ("icons/icon-192.png", "image/png"),
+    "/icons/icon-512.png": ("icons/icon-512.png", "image/png"),
     "/network-map": ("network-map.html", "text/html; charset=utf-8"),
     "/network-map.js": ("network-map.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),

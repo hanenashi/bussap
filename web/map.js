@@ -62,7 +62,7 @@
       status(data.warnings.length ? "JRの地図データを更新できていません。中央・じょうてつを表示中。" :
         data.total_stops ? "" : "この範囲に停留所がありません。地図を動かすか、会社を切り替えてください。");
     } catch {
-      if (serial===requestSerial) status("停留所を読み込めませんでした。地図を動かして再試行してください。",true);
+      if (serial===requestSerial) status(navigator.onLine ? "停留所を読み込めませんでした。地図を動かして再試行してください。" : "オフラインです。保存した乗り場から前回見た時刻表を開けます。",navigator.onLine);
     }
   }
   function addFeature(feature) {
