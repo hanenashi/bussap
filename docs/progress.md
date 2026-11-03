@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-03 — Route label layout and line filtering
+
+The owner reported that `真駒内駅` appeared one character per line beside the long `南９８真駒内駅～道路管理事務所` route name. Departure rows now show the short route code while retaining the full route name as a title. Chuo and Jotetsu rows are tappable: a tap filters by the chosen line code, date and refresh keep that filter, and **すべて見る** clears it. JR remains on its existing pattern selection flow.
+
+Chromium at 393 × 852 showed `南９８` beside a horizontal `真駒内駅` destination with 191 px available; tapping narrowed 22 visible rows to `南９８` only. A separate `南５５` check returned 49 departures from both GTFS variants of that line, with no other line codes; clearing restored the mixed list. No page errors or horizontal overflow. The Pixel Wireless ADB listener was unavailable when checked through Termux.
+
 ## 2026-11-03 — Private PDF reference viewer
 
 The owner chose to use the supplied 2016 PDF as a reference only. The map now links to a separate tab at `/network-map` with a single back button. The page renders the original PDF using vendored PDF.js 5.4.624; the PDF bytes are served unchanged from `/network-map.pdf` on the same tailnet-only service. It is not parsed into current route data or linked from a public host. The copyright notice and public redistribution question remain recorded in [pdf-assessment.md](pdf-assessment.md).
