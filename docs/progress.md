@@ -1,5 +1,23 @@
 # Progress
 
+## 2026-11-03 — Unified departure CLI
+
+Goal: query scheduled departures for an exact boarding stop and service date through one CLI for all three operators.
+
+Sources: the two HODA GTFS ZIPs and Sapporo Ekibus's JR local timetable endpoint. Existing sample fixtures and operator PDF comparisons are the reference checks.
+
+Assumptions: GTFS coverage is authoritative only inside `feed_info.txt` dates; JR's day category can be selected explicitly, but its API does not prove a particular date or special-service exception. The first CLI can use exact source IDs to avoid unsafe stop-name merging.
+
+Checks: weekday, Saturday, calendar exception, feed expiry, boarding position, and GTFS times beyond 24:00; repeat the three JR samples. Report missing or stale data plainly.
+
+Results: added `scripts/departures.py` with `refresh`, `find-stops`, `jr-patterns`, and `query`. The GTFS path applies calendar exceptions, uses exact boarding IDs, preserves platform codes, handles after-midnight times and returns explicit `outside_feed_coverage`. The JR path discovers route patterns and boarding numbers from Ekibus; it infers a day category from the official 2026–2027 holiday list, but returns `day_category_candidate_unverified_for_date` with no claimed date-specific timestamp. The three JR audit patterns still pass.
+
+Verification: three synthetic date/overnight tests pass. Live queries returned Chuo 麻０５ 07:40/08:45/09:47 on 2026-11-04, Jotetsu 南５４ 06:55/07:40/08:10 on 2026-11-07 after destination filtering, and JR 新１２ 07:50/08:20/09:00 in the Sunday/holiday category for 2026-11-03. On the 2026-11-03 national holiday, Chuo returned 08:06/09:06/10:06 and Jotetsu returned 06:55/07:40/08:10, matching their published Sunday/holiday sample columns. Out-of-coverage Chuo query on 2027-04-01 returned an explicit coverage status.
+
+Limits: this CLI is a source-validation engine, not a live phone service. JR's date-specific validity and seasonal transitions are unresolved; GTFS sample comparisons are narrow. Full route/stop coverage and snapshot scheduling remain future work.
+
+Next step: widen source validation and decide a reliable JR exception/season rule before exposing date-specific JR times to phones. A Beechan read-only service and scheduler can follow; the map and phone UI still wait.
+
 ## 2026-11-03 — JR probe and two GTFS comparisons
 
 Goal: make the three JR local samples repeatable, then check one Chuo and one Jotetsu scheduled departure against visible operator sources.
