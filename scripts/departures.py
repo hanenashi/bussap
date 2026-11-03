@@ -232,7 +232,7 @@ def query_jr(station_id: int, pattern: str, service_date: date, after: str, limi
         "operator": "jr",
         "service_date": service_date.isoformat(),
         "status": "day_category_candidate_unverified_for_date",
-        "warning": "Ekibus does not verify seasonal validity or exceptional service for the requested date; check the official timetable before travel.",
+        "warning": "cant promise correct times now",
         "stop": {"id": f"jr:{station_id}", "name": table["start"].get("station_name"), "boarding_position": pattern_info["boarding_position"]},
         "route": lines[0].get("line_name"),
         "direction": pattern_info["direction"],

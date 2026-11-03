@@ -16,7 +16,7 @@ HODA GTFS + JR timetable source
 
 Beechan owns fetching, parsing, validation, and scheduled refresh. Phones receive compact stop, route and departure data; they do not scrape the upstream sites. Snapshot replacement should be atomic after validation, retaining the last good version. Each response should carry source, revision/coverage date, fetched time and stale status.
 
-Initial record keys should namespace the source and distinguish `stop`, boarding position, route, pattern/direction and service-day category. A departure has a scheduled time and optional live time; they are separate fields. Coordinates and route shapes retain provenance and uncertainty. For JR's day-category source, the app must not claim a specific-date schedule without separate exception and seasonal verification.
+Initial record keys should namespace the source and distinguish `stop`, boarding position, route, pattern/direction and service-day category. A departure has a scheduled time and optional live time; they are separate fields. Coordinates and route shapes retain provenance and uncertainty. JR's day-category times can be shown with the user-approved warning `cant promise correct times now`; exceptional-date validation is not a launch gate for this personal app.
 
 `scripts/departures.py` currently returns these source-specific records as JSON. Chuo/Jotetsu results include date-specific `scheduled_at` only within GTFS coverage. JR results carry a category and a warning, with `scheduled_at: null`. This distinction should remain in any later HTTP API and UI.
 

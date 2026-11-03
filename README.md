@@ -19,7 +19,7 @@ python3 scripts/departures.py query jr --stop 340238 --pattern 340044:340100-0 -
 
 GTFS queries apply `calendar.txt` plus `calendar_dates.txt`, reject dates outside feed coverage, and return `scheduled_at` in Asia/Tokyo. The `--date` is the **service date**: a GTFS time such as `25:15:00` belongs to that service day and gets a next-calendar-day timestamp. `--after` uses the same service-day clock and accepts times beyond 24:00.
 
-JR queries infer one of Ekibus's four day categories using the [Cabinet Office 2026–2027 holiday list](https://www8.cao.go.jp/chosei/shukujitsu/gaiyou.html), or `--jr-category` can select one explicitly. The result is deliberately labeled `day_category_candidate_unverified_for_date` and has no `scheduled_at`: Ekibus does not establish seasonal validity or exceptional operations for a requested date. Check the official timetable before travel. The bounded `python3 scripts/probe_jr.py` checks three known local patterns against the audit fixture; a changed revision causes the query to withhold departures until reviewed.
+JR queries infer one of Ekibus's four day categories using the [Cabinet Office 2026–2027 holiday list](https://www8.cao.go.jp/chosei/shukujitsu/gaiyou.html), or `--jr-category` can select one explicitly. The result is labeled `day_category_candidate_unverified_for_date` and carries the user-facing warning `cant promise correct times now`. The API does not establish seasonal validity or exceptional operations for a requested date. The bounded `python3 scripts/probe_jr.py` checks three known local patterns against the audit fixture; a changed revision causes the query to withhold departures until reviewed.
 
 Run the small local tests with:
 

@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-03 — JR warning and launch scope
+
+The owner chose to use the normal JR weekday/Saturday/Sunday-holiday categories and not hold up the personal app for exceptional-service verification. User-facing JR warning: `cant promise correct times now`. The CLI now emits that exact warning with candidate JR times. A changed source revision still withholds times until reviewed. Next step: Beechan read-only service and refresh job, then phone UI.
+
 ## 2026-11-03 — JR date and season audit
 
 Goal: test more ordinary JR local patterns, find any first/third/fifth versus second/fourth Saturday difference, and determine whether operator notices establish a trustworthy season or exception rule.
@@ -14,7 +18,7 @@ Findings: seven more ordinary 札幌駅前 patterns all returned revision 202604
 
 Change: the JR CLI now withholds departures if Ekibus reports a revision other than the reviewed `20260401`. A test simulating a changed revision passes. The existing `day_category_candidate_unverified_for_date` status remains for the reviewed revision.
 
-Blocker: neither Ekibus timetable response nor the operator index gives an end date or future exception schedule. Day-category times cannot yet be promoted to verified departures for an arbitrary requested date. The next practical check is Busdia or a new operator notice/PDF at the next revision; special year-end service needs explicit operator evidence. No phone service was started.
+Known limitation, accepted for v1: neither Ekibus timetable response nor the operator index gives an end date or future exception schedule. The app may show JR day-category times with the owner's short warning. Recheck Busdia or operator notices when the source revision changes. No phone service was started in this audit.
 
 ## 2026-11-03 — Unified departure CLI
 

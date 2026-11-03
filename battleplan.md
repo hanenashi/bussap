@@ -4,6 +4,10 @@ Status: planning baseline, 2026-11-03
 Repository: https://github.com/hanenashi/bussap
 Owner workflow: ChatGPT for product/architecture decisions; Codex CLI on Beechan for bounded investigation and implementation.
 
+## Owner decision, 2026-11-03
+
+For this two-person app, normal JR weekday, Saturday and Sunday/holiday schedules are useful even without exceptional-date verification. Show candidate JR times with the exact user-facing warning `cant promise correct times now`. Exceptional-date validation is not a launch gate. Keep the source-revision guard so changed upstream data is reviewed before display. This decision supersedes any stricter gate below that would postpone the basic app solely for exceptional JR service dates.
+
 ## 0. Mission
 
 Build a fast, inexpensive, installable **Sapporo bus map and timetable app** for two people, primarily on Android phones. One glance should answer:
