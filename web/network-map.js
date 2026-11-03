@@ -10,9 +10,15 @@ document.getElementById("back").addEventListener("click", () => {
 const viewport = document.getElementById("viewport");
 const canvas = document.getElementById("page");
 const pointers = new Map();
+const MAX_ZOOM = 32;
 const state = { zoom: 2.3, x: 0, y: 0, width: 0, height: 0, ready: false };
 let lastTap = null;
 let multiTouch = false;
+let pdfPage = null;
+let detailTimer = null;
+let detailTask = null;
+let detailCanvas = null;
+let detailGeneration = 0;
 
 function dimensions() {
   const width = viewport.clientWidth * state.zoom;
@@ -26,11 +32,49 @@ function position() {
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
   canvas.style.transform = `translate3d(${state.x}px, ${state.y}px, 0)`;
+  scheduleDetail();
+}
+
+function scheduleDetail() {
+  ++detailGeneration;
+  clearTimeout(detailTimer);
+  detailTask?.cancel();
+  detailCanvas?.remove();
+  detailCanvas = null;
+  if (!pdfPage || state.zoom < 4) return;
+  const generation = detailGeneration;
+  detailTimer = setTimeout(() => renderDetail(generation), 180);
+}
+
+async function renderDetail(generation) {
+  if (generation !== detailGeneration || !pdfPage) return;
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  const target = document.createElement("canvas");
+  target.width = Math.ceil(viewport.clientWidth * pixelRatio);
+  target.height = Math.ceil(viewport.clientHeight * pixelRatio);
+  const detailViewport = pdfPage.getViewport({
+    scale: viewport.clientWidth / state.width * state.zoom * pixelRatio,
+    offsetX: state.x * pixelRatio,
+    offsetY: state.y * pixelRatio,
+  });
+  const task = pdfPage.render({ canvas: target, canvasContext: target.getContext("2d"), viewport: detailViewport, background: "rgb(255,255,255)" });
+  detailTask = task;
+  try {
+    await task.promise;
+    if (generation !== detailGeneration) return;
+    target.className = "detail-canvas";
+    viewport.append(target);
+    detailCanvas = target;
+  } catch (error) {
+    if (error.name !== "RenderingCancelledException") console.error("PDF detail could not be rendered", error);
+  } finally {
+    if (detailTask === task) detailTask = null;
+  }
 }
 
 function zoomAt(next, oldX, oldY, newX = oldX, newY = oldY) {
   const oldZoom = state.zoom;
-  state.zoom = Math.max(1, Math.min(8, next));
+  state.zoom = Math.max(1, Math.min(MAX_ZOOM, next));
   const ratio = state.zoom / oldZoom;
   state.x = newX - (oldX - state.x) * ratio;
   state.y = newY - (oldY - state.y) * ratio;
@@ -80,7 +124,7 @@ function endPointer(event) {
   if (event.type === "pointerup" && !multiTouch && !pointer.moved) {
     const now = performance.now();
     if (lastTap && now - lastTap.time < 320 && Math.hypot(pointer.x - lastTap.x, pointer.y - lastTap.y) < 35) {
-      zoomAt(state.zoom >= 7.5 ? 1 : state.zoom * 2, pointer.x, pointer.y);
+      zoomAt(state.zoom >= MAX_ZOOM - 0.5 ? 1 : state.zoom * 2, pointer.x, pointer.y);
       lastTap = null;
     } else lastTap = { time: now, x: pointer.x, y: pointer.y };
   }
@@ -126,6 +170,7 @@ try {
   await page.render({ canvas, canvasContext: canvas.getContext("2d"), viewport: renderViewport }).promise;
   state.width = original.width;
   state.height = original.height;
+  pdfPage = page;
   state.ready = true;
   const { width, height } = dimensions();
   state.x = (viewport.clientWidth - width) / 2;

@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-03 — Sharper PDF close-ups
+
+The owner found that the 8× PDF limit still left labels hard to read. The viewer now allows 32× zoom. At close zoom it redraws the visible phone-sized section directly from the vector PDF after movement settles, rather than stretching the overview canvas. The overview remains visible during a drag. No new controls or source data were added.
+
+Mobile Chromium at 393 × 852 with touch emulation reached a 12,576 CSS px page width at 32×, produced a sharp 786 × 1600 px detail canvas, and redrew after a one-finger drag. The screen retained one visible button, had no horizontal overflow, and logged no page errors. The 24× and 32× screenshots were visually inspected; stop names were legible. Physical Pixel QA remains deferred as requested.
+
 ## 2026-11-03 — PDF reference pan and closer zoom
 
 The owner reported that the PDF loaded but one-finger dragging did nothing and the map needed closer zoom. The viewer now starts at 2.3× fit width, pans with one finger, pinches between 1× and 8×, and double taps for a quick closer view. It keeps the back button as the only visible control. PDF.js renders the same source page at 1.5× resolution; route data is still not extracted from the historical PDF.
