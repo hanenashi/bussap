@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-03 — Private PDF reference viewer
+
+The owner chose to use the supplied 2016 PDF as a reference only. The map now links to a separate tab at `/network-map` with a single back button. The page renders the original PDF using vendored PDF.js 5.4.624; the PDF bytes are served unchanged from `/network-map.pdf` on the same tailnet-only service. It is not parsed into current route data or linked from a public host. The copyright notice and public redistribution question remain recorded in [pdf-assessment.md](pdf-assessment.md).
+
+Checks: mobile-sized Chromium at 393 × 852 rendered the full PDF on canvas with no page errors or horizontal overflow; the back button closed the viewer tab and preserved the original map tab. The HTTPS viewer and PDF returned 200, and the served PDF matched the root file byte-for-byte. Five Python tests, JavaScript syntax, and `git diff --check` passed. Physical Pixel QA was unavailable because ADB had no connected device.
+
 ## 2026-11-03 — Street map and PDF preflight
 
 Goal: add a Sapporo street map that opens the existing departure view for all three operators, while assessing the supplied PDF before using it. The map design reference is `docs/design/map-screen-concept.png`.
@@ -10,7 +16,7 @@ Implementation: a validated, atomic JR marker snapshot in ignored `.local-data/`
 
 Verification: the local 393×852 Chromium path completed Jotetsu 札幌駅 25番のりば → two-bus preview → full departures, JR 札幌駅前 11番のりば → two matching route choices → candidate departures with `cant promise correct times now`, and Chuo 札幌駅北口 → full departures. No page errors. 320×720 and 1000×800 screenshots had no horizontal overflow. Mocked geolocation moved the viewport only after the location button was tapped. The five Python tests, JavaScript syntax checks, systemd unit verification, manual refresh job, local map API and tailnet HTTPS checks passed. The Pixel reached the HTTPS page through Termux SSH; Wireless ADB was unavailable, so this slice has not yet had a fresh physical Pixel render.
 
-Visual comparison: header/search/operator tabs, blue/coral/teal markers, right-side location control, visible map attribution, and the date/departure/action anatomy in the stop sheet follow the concept. Intentional differences are real OSM tiles instead of illustrative map art, and a truthful initial "tap a stop" sheet instead of sample departures. The selected sheet scrolls into view on small screens. No PDF is served in the app.
+Visual comparison: header/search/operator tabs, blue/coral/teal markers, right-side location control, visible map attribution, and the date/departure/action anatomy in the stop sheet follow the concept. Intentional differences are real OSM tiles instead of illustrative map art, and a truthful initial "tap a stop" sheet instead of sample departures. The selected sheet scrolls into view on small screens. The PDF viewer was added in the subsequent slice above.
 
 
 ## 2026-11-03 — Pixel Chrome empty-state diagnosis

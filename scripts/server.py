@@ -41,14 +41,19 @@ class BoundedCache:
 
 CACHE = BoundedCache()
 WEB_DIR = Path(__file__).resolve().parents[1] / "web"
+NETWORK_PDF = WEB_DIR.parent / " sapporobus.pdf"
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
+    "/network-map": ("network-map.html", "text/html; charset=utf-8"),
+    "/network-map.js": ("network-map.js", "text/javascript; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
     "/map.css": ("map.css", "text/css; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
     "/map.js": ("map.js", "text/javascript; charset=utf-8"),
     "/vendor/leaflet.js": ("vendor/leaflet.js", "text/javascript; charset=utf-8"),
     "/vendor/leaflet.css": ("vendor/leaflet.css", "text/css; charset=utf-8"),
+    "/vendor/pdf.mjs": ("vendor/pdf.mjs", "text/javascript; charset=utf-8"),
+    "/vendor/pdf.worker.mjs": ("vendor/pdf.worker.mjs", "text/javascript; charset=utf-8"),
 }
 
 
@@ -167,6 +172,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(414, {"error": "request URI too long"})
             return
         parsed = urlsplit(self.path)
+        if parsed.path == "/network-map.pdf":
+            self.send_pdf()
+            return
         if parsed.path in STATIC_FILES:
             self.send_static(*STATIC_FILES[parsed.path])
             return
@@ -205,6 +213,21 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-cache")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def send_pdf(self):
+        try:
+            body = NETWORK_PDF.read_bytes()
+        except OSError:
+            self.send_json(404, {"error": "not found"})
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/pdf")
+        self.send_header("Content-Disposition", 'inline; filename="sapporobus-reference.pdf"')
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "private, no-cache")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(body)
