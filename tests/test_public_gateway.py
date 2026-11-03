@@ -1,9 +1,11 @@
 """The public listener must not leak BUSSAP data before authentication."""
 
 import importlib.util
+import secrets
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -46,10 +48,27 @@ class PublicGatewayTests(unittest.TestCase):
         status, body = self.status("/")
         self.assertEqual(status, 200)
         self.assertIn(b"/auth.js", body)
+        for path in ("/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"):
+            self.assertEqual(self.status(path)[0], 200, path)
         for path in ("/health", "/api/stops?operator=chuo&name=x", "/app.js", "/sw.js"):
             self.assertEqual(self.status(path)[0], 401, path)
         for path in ("/network-map", "/network-map.js", "/network-map.pdf"):
             self.assertEqual(self.status(path)[0], 404, path)
+
+    def test_authenticated_visitor_can_open_pdf(self):
+        token = secrets.token_urlsafe(32)
+        with self.gateway.connect(self.gateway.GatewayHandler.db_path) as db:
+            db.execute("INSERT INTO sessions VALUES (?, ?, ?)",
+                       (self.gateway.sha(token), "test", int(time.time()) + 60))
+        for path in ("/", "/network-map", "/network-map.js", "/network-map.pdf"):
+            request = Request(self.base + path, headers={"Cookie": f"bussap_session={token}"})
+            with urlopen(request, timeout=5) as response:
+                body = response.read()
+                self.assertEqual(response.status, 200, path)
+                if path == "/":
+                    self.assertIn(b"/network-map", body)
+                if path == "/network-map.pdf":
+                    self.assertTrue(body.startswith(b"%PDF-"))
 
     def test_cross_origin_post_is_denied(self):
         request = Request(self.base + "/auth/login/begin", data=b"{}", headers={"Origin": "https://elsewhere.example"})

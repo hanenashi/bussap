@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-03 — Signed-in PDF and public app icons
+
+The owner asked to restore the historical PDF for the two enrolled users and reported that the installed app icon had disappeared. The Pixel screenshot inbox contained only an unrelated May screenshot, so diagnosis used the gateway response: unauthenticated requests for the manifest and both icon PNGs returned 401. The gateway now serves only those branding files without a session, and the login page links the same manifest and icon. Versioned icon URLs in the manifest prompt a fresh Android fetch. App JavaScript, APIs, and the PDF still require a valid session; the PDF viewer and bytes return 404 to unauthenticated visitors.
+
+Checks: nine Python tests passed in the gateway virtual environment, including signed-in PDF access and unauthenticated PDF denial. After the gateway restart, the public manifest and both PNGs returned 200 without cookies, while the API still returned 401 and PDF 404. Chromium parsed the public manifest and fetched both versioned icons without credentials. A temporary signed-in browser session rendered the PDF canvas at 3572 × 3465 px through the live Funnel, and its back button closed the tab with no page errors; the temporary session was deleted. Actual launcher-icon refresh on either Pixel has not yet been observed.
+
 ## 2026-11-03 — Both phones enrolled
 
 The wife completed enrollment through the public gateway. The production database now lists exactly two credentials, `owner` and `wife`. Her one-use code file was removed. The public sign-in page still responds, and an API request without a session still receives 401. The owner confirmed that she is in; installation on her Pixel has not been independently observed.

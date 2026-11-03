@@ -24,13 +24,13 @@ from fido2.webauthn import (
 )
 from fido2.utils import websafe_decode, websafe_encode
 
-from server import Handler, WEB_DIR
+from server import Handler, STATIC_FILES, WEB_DIR
 
 
 DATA_DIR = Path(__file__).resolve().parents[1] / ".local-data"
 DB_PATH = DATA_DIR / "gateway.sqlite3"
 PDF_PATHS = {"/network-map", "/network-map.js", "/network-map.pdf"}
-PDF_LINK = '<a id="network-map-link" href="/network-map" target="_blank" rel="opener">参考路線図 (2016年・PDF) ↗</a>'
+PUBLIC_BRANDING = {"/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"}
 FLOW_SECONDS = 180
 SESSION_SECONDS = 14 * 24 * 3600
 
@@ -140,8 +140,8 @@ class GatewayHandler(Handler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
-        if path in PDF_PATHS:
-            self.reply(404, {"error": "not found"})
+        if path in PUBLIC_BRANDING:
+            self.send_static(*STATIC_FILES[path])
             return
         if path == "/auth.js":
             self.response(200, (WEB_DIR / "auth.js").read_bytes(), "text/javascript; charset=utf-8")
@@ -152,15 +152,10 @@ class GatewayHandler(Handler):
         if not self.authenticated():
             if path == "/":
                 self.response(200, (WEB_DIR / "auth.html").read_bytes())
+            elif path in PDF_PATHS:
+                self.reply(404, {"error": "not found"})
             else:
                 self.reply(401, {"error": "sign in required"})
-            return
-        if path == "/":
-            content = (WEB_DIR / "index.html").read_text(encoding="utf-8")
-            if content.count(PDF_LINK) != 1:
-                self.reply(500, {"error": "public index link mismatch"})
-            else:
-                self.response(200, content.replace(PDF_LINK, ""))
             return
         super().do_GET()
 
