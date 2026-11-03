@@ -63,6 +63,12 @@ def find_stops(operator: str, name: str, limit: int) -> dict:
         needle = unicodedata.normalize("NFKC", name).casefold()
         with zipfile.ZipFile(path) as archive:
             matches = [{"id": f"{operator}:{r['stop_id']}", "name": r["stop_name"], "lat": float(r["stop_lat"]), "lon": float(r["stop_lon"]), "boarding_position": r.get("platform_code") or None} for r in rows(archive, "stops.txt") if needle in unicodedata.normalize("NFKC", r["stop_name"]).casefold()]
+        # Keep Sapporo stops visible even when a broad match has more than the API limit.
+        matches.sort(key=lambda stop: (
+            unicodedata.normalize("NFKC", stop["name"]).casefold() != needle,
+            (stop["lat"] - 43.0687) ** 2 + ((stop["lon"] - 141.3508) * 0.73) ** 2,
+            stop["name"], stop["id"],
+        ))
     return {"operator": operator, "query": name, "total_matches": len(matches), "stops": matches[:limit]}
 
 

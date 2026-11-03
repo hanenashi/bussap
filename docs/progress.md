@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-11-03 — Pixel Chrome empty-state diagnosis
+
+The owner reported that the current Chrome tab seemed broken. ADB and Chrome DevTools showed the selected Chuo stop was `北３条西１０丁目` (`S010200097400100`) at 43.20428, 141.75217, roughly 36 km straight-line distance from Sapporo Station. Its 2026-11-03 departures were 08:47 and 12:02; at 12:20 the old generic “no buses” message was technically correct but gave no useful explanation. Chrome had also automatically translated the Japanese stop name and app labels into English. The Pixel screenshot inbox contained no recent BUSSAP screenshot; diagnosis used a fresh ADB screen capture and the live Chrome tab.
+
+The UI now labels a stop's straight-line distance from Sapporo Station and, when today's departures have finished, shows the day's last scheduled bus if the full result fits within the API's 50-row bound. GTFS stop search ranks exact names and then stops near Sapporo before applying the API result limit. Japanese transit names are marked `notranslate`. A live Pixel Chrome reload showed the Japanese text, 36 km label, and 12:02 last-bus message; tapping 明日 showed three departures starting at 09:02. The physical 1080 px screenshot showed the page fitting the 411 CSS px viewport. The stale translated BUSSAP tab was replaced with the verified one.
+
+
 ## 2026-11-03 — First phone stop view
 
 Goal: search real stops, select an exact source boarding position or JR route pattern, and show scheduled departures for today, tomorrow, or a chosen date on the existing Beechan HTTPS origin. Use the generated visual concept at `docs/design/stop-screen-concept.png` for the layout and typography; real API data replaces the sample text.

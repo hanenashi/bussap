@@ -10,6 +10,17 @@ function tokyoNow() {
 }
 function nextDay(iso) { const d = new Date(`${iso}T12:00:00+09:00`); d.setUTCDate(d.getUTCDate() + 1); const p = Object.fromEntries(tokyoParts.formatToParts(d).filter(v => v.type !== "literal").map(v => [v.type, v.value])); return `${p.year}-${p.month}-${p.day}`; }
 function dateLabel(iso) { const [, m, d] = iso.split("-"); return `${Number(m)}/${Number(d)}`; }
+function distanceFromSapporo(stop) {
+  if (stop.lat == null || stop.lon == null) return null;
+  const radians = degrees => degrees * Math.PI / 180;
+  const deltaLat = radians(stop.lat - 43.0687), deltaLon = radians(stop.lon - 141.3508);
+  const a = Math.sin(deltaLat / 2) ** 2 + Math.cos(radians(43.0687)) * Math.cos(radians(stop.lat)) * Math.sin(deltaLon / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(a));
+}
+function locationLabel(stop) {
+  const km = distanceFromSapporo(stop);
+  return km == null ? "" : `札幌駅から直線約${km < 10 ? km.toFixed(1) : Math.round(km)}km`;
+}
 function setPanel(panel) { for (const id of ["search-panel", "pattern-panel", "departure-panel"]) $(id).hidden = id !== panel; }
 function setStatus(id, message, error = false) { const el = $(id); el.hidden = !message; el.textContent = message || ""; el.classList.toggle("error", error); }
 function clear(el) { el.replaceChildren(); }
@@ -43,7 +54,8 @@ async function search() {
 function renderSearchResults(serial, choices, results) {
   if (serial !== state.searchSerial) return;
   const list = choices.flatMap(operator => (results.get(operator)?.stops || []).map(stop => ({ ...stop, operator })));
-  list.sort((a, b) => a.name.localeCompare(b.name, "ja") || operators.indexOf(a.operator) - operators.indexOf(b.operator));
+  const term = $("stop-search").value.trim();
+  list.sort((a, b) => Number(b.name === term) - Number(a.name === term) || (distanceFromSapporo(a) ?? Infinity) - (distanceFromSapporo(b) ?? Infinity) || a.name.localeCompare(b.name, "ja") || operators.indexOf(a.operator) - operators.indexOf(b.operator));
   clear($("search-results"));
   const done = results.size === choices.length;
   const failed = [...results.values()].filter(value => value === null).length;
@@ -52,7 +64,7 @@ function renderSearchResults(serial, choices, results) {
   const fragment = document.createDocumentFragment();
   for (const stop of list) {
     const position = stop.boarding_position ? `${stop.boarding_position}番のりば` : "乗り場番号なし";
-    const location = stop.lat != null ? ` · ${stop.lat.toFixed(5)}, ${stop.lon.toFixed(5)}` : "";
+    const location = locationLabel(stop) ? ` · ${locationLabel(stop)}` : "";
     fragment.append(resultButton(stop.name, `${names[stop.operator]} · ${stop.operator === "jr" ? "路線を選択" : position}${location}`, () => selectStop(stop)));
   }
   $("search-results").append(fragment);
@@ -93,7 +105,7 @@ async function loadDepartures() {
   setPanel("departure-panel"); updateDateButtons();
   const position = stop.operator === "jr" ? state.pattern.boarding_position : stop.boarding_position;
   $("selected-stop").textContent = `${stop.name}${position ? ` · ${position}番のりば` : ""}`;
-  $("selected-detail").textContent = `${names[stop.operator]}${state.pattern ? ` · ${state.pattern.route} · ${state.pattern.direction || "行先不明"}` : ""}`;
+  $("selected-detail").textContent = `${names[stop.operator]}${state.pattern ? ` · ${state.pattern.route} · ${state.pattern.direction || "行先不明"}` : ""}${locationLabel(stop) ? ` · ${locationLabel(stop)}` : ""}`;
   clear($("departure-results")); clear($("source-note")); setStatus("departure-status", "時刻を読み込んでいます…");
   const now = tokyoNow();
   const params = { operator: stop.operator, stop: stop.id.split(":").slice(1).join(":"), date: state.date, after: state.date === now.date ? now.time : "00:00", limit: "50" };
@@ -103,7 +115,17 @@ async function loadDepartures() {
     if (serial !== state.loadSerial) return;
     if (data.status === "outside_feed_coverage") { setStatus("departure-status", `この日付の時刻表はありません。掲載期間: ${data.coverage.from}〜${data.coverage.through}`); return; }
     if (data.status === "source_revision_changed_review_required") { setStatus("departure-status", "JRの時刻表が更新されました。確認が終わるまで時刻を表示できません。", true); return; }
-    setStatus("departure-status", data.warning || (data.departures.length ? "" : "この時間以降のバスは見つかりませんでした。"), Boolean(data.warning));
+    let emptyMessage = "この乗り場では、この時間以降の便はありません。明日の時刻を見るか、別の乗り場を選んでください。";
+    if (!data.departures.length && state.date === now.date && stop.operator !== "jr") {
+      try {
+        const fullDay = await get("/api/departures", { ...params, after: "00:00" });
+        if (serial !== state.loadSerial) return;
+        if (fullDay.departures.length > 0 && fullDay.departures.length < 50) {
+          emptyMessage = `この乗り場の今日の最終バスは${displayTime(fullDay.departures.at(-1).scheduled_time)}でした。明日の時刻も確認できます。`;
+        }
+      } catch { /* Keep the useful empty-state message if the second lookup fails. */ }
+    }
+    setStatus("departure-status", data.warning || (data.departures.length ? "" : emptyMessage), Boolean(data.warning));
     for (const departure of data.departures) {
       const row = make("div", "departure-row");
       const main = make("div", "departure-main"), line = make("div", "departure-line");
