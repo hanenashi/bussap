@@ -1,0 +1,16 @@
+[Unit]
+Description=BUSSAP credential-gated staging server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/GIT/bussap
+ExecStart=%h/GIT/bussap/.venv/bin/python %h/GIT/bussap/scripts/public_gateway.py serve --port 8790
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

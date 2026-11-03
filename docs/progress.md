@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-11-03 — Device credential gate staged for a future Funnel
+
+Goal: prepare an HTTPS entry point that can authenticate only the owner's and wife's enrolled phones without asking either phone to run Tailscale. Preserve the current private BUSSAP URL and keep the 2016 PDF off any public endpoint.
+
+Implementation: a separate Python gateway on loopback port 8790 uses Yubico's pinned `fido2` library, one-use enrollment codes, single-device WebAuthn credentials with device verification, and revocable 14-day sessions. It gates the app shell, static files, service worker, and APIs; its public-facing variant removes and blocks the historical PDF. A private Tailscale Serve mapping on HTTPS port 10003 stages the gateway. The existing private BUSSAP service on port 10002 is unchanged.
+
+Checks: eight Python tests passed in the gateway virtual environment, including unauthenticated API/PDF denial and cross-origin POST rejection. Chromium's virtual authenticator enrolled once, reached the gated app, lost its session after cookies were cleared, and signed in again; the app had no page errors. A second browser pass confirmed the gated app served its install manifest and activated its service worker after enrollment. The production gateway serves the sign-in page over tailnet HTTPS, returns 401 for an unauthenticated API request, and returns 404 for the PDF. The test credentials were revoked or kept in temporary databases; the production database has none. The six existing tests and syntax checks passed. Real Pixel credential enrollment and public Funnel routing are outstanding.
+
+Routing limit: Beechan's only Funnel-capable ports (443, 8443, 10000) are already used by unrelated private Serve mappings. The owner must choose between a separate Tailscale node/hostname and moving one existing service before a public Funnel can be enabled; the final WebAuthn RP ID depends on that choice. No public mapping or production enrollment code has been created.
+
 ## 2026-11-03 — JR source date and one PDF exit control
 
 Goal: replace the generic JR `cant promise correct times now` text with the actual timetable revision date and a short validity caveat, while showing when Beechan fetched that source. In the installed standalone app, open the PDF viewer in the same app window so the viewer's back button is the only visible exit control. Keep new-tab behavior in ordinary browser mode.

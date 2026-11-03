@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja" translate="no">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>BUSSAP — この端末を確認</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: #f2f6f8; color: #183044; font: 16px/1.5 system-ui, sans-serif; }
+    main { width: min(100%, 390px); padding: 28px; background: #fff; border-radius: 20px; box-shadow: 0 8px 36px #18304412; }
+    h1 { margin: 0 0 4px; font-size: 28px; }
+    p { margin: 0 0 24px; }
+    button { width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: #2677b9; color: white; font: 700 16px system-ui, sans-serif; }
+    button:disabled { opacity: .55; }
+    details { margin-top: 28px; border-top: 1px solid #dbe3e8; padding-top: 18px; }
+    summary { cursor: pointer; }
+    label { display: block; margin: 14px 0 6px; }
+    input { width: 100%; min-height: 48px; margin-bottom: 12px; padding: 9px 12px; border: 1px solid #acbecb; border-radius: 10px; font: inherit; }
+    #message { min-height: 1.5em; margin: 18px 0 0; color: #9b3730; }
+  </style>
+  <script src="/auth.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>BUSSAP</h1>
+    <p>登録した端末で開いてください。</p>
+    <button id="sign-in" type="button">この端末で開く</button>
+    <details>
+      <summary>初回登録</summary>
+      <label for="code">登録コード</label>
+      <input id="code" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="text">
+      <button id="enroll" type="button">この端末を登録</button>
+    </details>
+    <p id="message" role="status" aria-live="polite"></p>
+  </main>
+</body>
+</html>

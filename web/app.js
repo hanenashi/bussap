@@ -285,7 +285,7 @@ window.addEventListener("storage", event => { if (event.key === FAVORITES_KEY) {
 BUSSAPMap.init(selectStop);
 renderFavorites();
 const networkMapLink = $("network-map-link");
-if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true) {
+if (networkMapLink && (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true)) {
   networkMapLink.removeAttribute("target");
   networkMapLink.removeAttribute("rel");
   networkMapLink.textContent = "参考路線図 (2016年・PDF) ›";
