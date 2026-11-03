@@ -7,6 +7,7 @@ candidates; the Ekibus endpoint does not certify seasonal or exceptional dates.
 
 import argparse
 import csv
+import email.utils
 import io
 import json
 import os
@@ -15,6 +16,7 @@ import sys
 import tempfile
 import unicodedata
 import urllib.request
+import urllib.error
 import zipfile
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -97,8 +99,19 @@ def refresh(operator: str) -> dict:
     fd, temporary = tempfile.mkstemp(prefix=f"{operator}-", suffix=".zip", dir=DATA_DIR)
     os.close(fd)
     try:
-        request = urllib.request.Request(FEEDS[operator], headers={"User-Agent": "bussap-source-audit/0.1"})
-        with urllib.request.urlopen(request, timeout=30) as response, open(temporary, "wb") as output:
+        headers = {"User-Agent": "bussap-source-audit/0.1"}
+        if target.exists():
+            headers["If-Modified-Since"] = email.utils.formatdate(target.stat().st_mtime, usegmt=True)
+        request = urllib.request.Request(FEEDS[operator], headers=headers)
+        try:
+            response = urllib.request.urlopen(request, timeout=30)
+        except urllib.error.HTTPError as exc:
+            if exc.code != 304 or not target.exists():
+                raise
+            with zipfile.ZipFile(target) as archive:
+                info = next(rows(archive, "feed_info.txt"))
+            return {"operator": operator, "status": "unchanged", "feed_start_date": info["feed_start_date"], "feed_end_date": info["feed_end_date"], "bytes": target.stat().st_size, "path": str(target)}
+        with response, open(temporary, "wb") as output:
             while chunk := response.read(65536):
                 output.write(chunk)
                 if output.tell() > 30_000_000:
@@ -115,7 +128,7 @@ def refresh(operator: str) -> dict:
         if target.exists():
             shutil.copy2(target, DATA_DIR / f"{operator}.previous.zip")
         os.replace(temporary, target)
-        return {"operator": operator, "feed_start_date": info["feed_start_date"], "feed_end_date": info["feed_end_date"], "bytes": target.stat().st_size, "path": str(target)}
+        return {"operator": operator, "status": "updated", "feed_start_date": info["feed_start_date"], "feed_end_date": info["feed_end_date"], "bytes": target.stat().st_size, "path": str(target)}
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)

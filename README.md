@@ -26,3 +26,24 @@ Run the small local tests with:
 ```sh
 python3 -m unittest discover -s tests -v
 ```
+
+## Beechan phone-facing service
+
+Beechan runs a read-only API bound to `127.0.0.1:8788`. Tailscale Serve exposes it only to the tailnet at:
+
+```text
+https://beechan.tail8d9f69.ts.net:10002
+```
+
+The API supports `GET /health`, `GET /api/stops?operator=...&name=...`, `GET /api/jr-patterns?stop=...`, and `GET /api/departures?operator=...&stop=...&date=...`. Departure query parameters match the CLI (`after`, `limit`, `route`, `destination`, `pattern`, `jr_category`). It accepts no writes. JR responses include the exact user warning `cant promise correct times now` and withhold times after an unreviewed source revision change. The server caches small JR lookups briefly to avoid repeated upstream calls; Chuo and Jotetsu queries read Beechan's local feed files.
+
+Versioned systemd user units live in `ops/systemd/`. On Beechan they are symlinked into `~/.config/systemd/user/` and enabled:
+
+```sh
+systemctl --user status bussap-api.service bussap-refresh.timer
+systemctl --user start bussap-refresh.service
+curl -fsS http://127.0.0.1:8788/health
+tailscale serve status
+```
+
+The timer checks the two HODA ZIPs daily around 04:20 JST, with up to 20 minutes of jitter. Conditional requests leave unchanged feeds in place; a valid replacement keeps a `.previous.zip` backup in ignored `.local-data/`. To stop access, disable only BUSSAP's mapping with `tailscale serve --https=10002 off`. Other Serve mappings belong to other projects.

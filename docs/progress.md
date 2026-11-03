@@ -1,5 +1,23 @@
 # Progress
 
+## 2026-11-03 — Beechan read-only service and feed refresh
+
+Goal: let phone browsers query Beechan's normalized departure results through a small read-only HTTPS service. Refresh the Chuo and Jotetsu feeds on Beechan without making phones fetch upstream data.
+
+Sources: the existing three-operator CLI, HODA GTFS ZIPs, and Ekibus JR local timetable requests. Tailscale Serve already runs on Beechan for other localhost services; use a separate port and preserve existing mappings.
+
+Assumptions: this two-person service needs only bounded GET endpoints, local cache and tailnet access. JR remains category-based with the exact warning `cant promise correct times now`; a changed revision must withhold its times.
+
+Checks: local HTTP health, stop search, pattern discovery, three-operator departures, invalid parameters, feed refresh timer, and a phone-side HTTPS read if Tailscale access is available. Keep the service bound to loopback.
+
+Results: `scripts/server.py` serves only bounded GET endpoints on `127.0.0.1:8788`. The three-operator queries preserve the existing GTFS coverage and JR candidate statuses; POST returns 405. Systemd user units `bussap-api.service` and `bussap-refresh.timer` are enabled on Beechan. The daily refresh uses HTTP conditional requests; a manual systemd refresh completed with both feeds unchanged.
+
+Network: added tailnet-only `https://beechan.tail8d9f69.ts.net:10002` → `127.0.0.1:8788`, leaving pre-existing Serve mappings intact. Local health returned `ready`; the Pixel fetched `/health` and a Chuo departure through HTTPS over Tailscale. No phone UI was built in this slice.
+
+Checks: local health, stop search, JR pattern discovery, three-operator departures, missing JR pattern (400), POST (405), feed timer execution, and Pixel-to-Beechan HTTPS query all passed. Existing four unit tests and three JR source probes also passed. The user systemd manager reports `degraded` because of other units, but both BUSSAP units were active/successful at setup.
+
+Next step: build the first phone UI on the same Beechan origin, starting with stop search and departures. The map and broader network overview can follow after the stop view is usable on a Pixel.
+
 ## 2026-11-03 — JR warning and launch scope
 
 The owner chose to use the normal JR weekday/Saturday/Sunday-holiday categories and not hold up the personal app for exceptional-service verification. User-facing JR warning: `cant promise correct times now`. The CLI now emits that exact warning with candidate JR times. A changed source revision still withholds times until reviewed. Next step: Beechan read-only service and refresh job, then phone UI.

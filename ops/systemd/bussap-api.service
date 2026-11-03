@@ -1,0 +1,15 @@
+[Unit]
+Description=BUSSAP read-only local API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/GIT/bussap
+ExecStart=/usr/bin/python3 %h/GIT/bussap/scripts/server.py --host 127.0.0.1 --port 8788
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

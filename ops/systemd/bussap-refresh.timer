@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily BUSSAP GTFS refresh
+
+[Timer]
+OnCalendar=*-*-* 04:20:00
+RandomizedDelaySec=20m
+Persistent=true
+Unit=bussap-refresh.service
+
+[Install]
+WantedBy=timers.target
