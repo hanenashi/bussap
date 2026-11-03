@@ -1,6 +1,6 @@
 # BUSSAP
 
-Personal Sapporo bus map and timetable project. Beechan serves a first phone screen for stop search and scheduled departures from Hokkaido Chuo Bus, Jotetsu, and JR Hokkaido Bus local routes. See [battleplan.md](battleplan.md) and [docs/source-inventory.md](docs/source-inventory.md).
+Personal Sapporo bus map and timetable project. Beechan serves a street map, stop search, and scheduled departures for Hokkaido Chuo Bus, Jotetsu, and JR Hokkaido Bus local routes. See [battleplan.md](battleplan.md) and [docs/source-inventory.md](docs/source-inventory.md).
 
 ## Source query on Beechan
 
@@ -35,7 +35,9 @@ Beechan runs a read-only API bound to `127.0.0.1:8788`. Tailscale Serve exposes 
 https://beechan.tail8d9f69.ts.net:10002
 ```
 
-Open that URL in a phone browser for the stop search screen. Choose the exact boarding position, then today, tomorrow, or another date. JR stops ask for a route/direction before displaying day-category candidate times. This is the first stop view; the street map, installable/offline PWA behavior, and route map are later slices.
+Open that URL in a phone browser for the street map and stop search. Tap a point (or a cluster, then an exact boarding point) to preview departures and open the full timetable. The current-location button requests permission only when tapped. JR points with numbers filter the route list to that boarding position. Choose today, tomorrow, or another date in the full timetable. The map uses OpenStreetMap tiles for the visible viewport; it does not download offline maps or draw unverified route lines. The installable/offline PWA and network diagram are later slices; see [PDF assessment](docs/pdf-assessment.md).
+
+The map follows the [OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/): visible attribution, browser caching, and no bulk prefetch. The public tile service is best-effort; BUSSAP's timetable API still works if the background map tiles fail.
 
 The API supports `GET /health`, `GET /api/stops?operator=...&name=...`, `GET /api/jr-patterns?stop=...`, and `GET /api/departures?operator=...&stop=...&date=...`. Departure query parameters match the CLI (`after`, `limit`, `route`, `destination`, `pattern`, `jr_category`). It accepts no writes. JR responses include the exact user warning `cant promise correct times now` and withhold times after an unreviewed source revision change. The server caches small JR lookups briefly to avoid repeated upstream calls; Chuo and Jotetsu queries read Beechan's local feed files.
 
@@ -49,3 +51,5 @@ tailscale serve status
 ```
 
 The timer checks the two HODA ZIPs daily around 04:20 JST, with up to 20 minutes of jitter. Conditional requests leave unchanged feeds in place; a valid replacement keeps a `.previous.zip` backup in ignored `.local-data/`. To stop access, disable only BUSSAP's mapping with `tailscale serve --https=10002 off`. Other Serve mappings belong to other projects.
+
+The same timer now refreshes a compact JR boarding-point map snapshot from Sapporo Ekibus's `/Get_marker_data`. It validates operator IDs, names, Hokkaido coordinates, and a minimum record count before atomic replacement. The previous snapshot stays available if a refresh fails. Inspect it with `python3 scripts/map_data.py refresh-jr`. The map API is `GET /api/map-stops?bbox=south,west,north,east&zoom=15&operator=all`; it returns bounded clusters and exact stop IDs. Leaflet 1.9.4 is vendored under `web/vendor/` with its MIT license.

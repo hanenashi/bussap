@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import math
 import threading
 import time
 import zipfile
@@ -13,6 +14,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
 import departures
+import map_data
 
 
 class BoundedCache:
@@ -42,7 +44,11 @@ WEB_DIR = Path(__file__).resolve().parents[1] / "web"
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/styles.css": ("styles.css", "text/css; charset=utf-8"),
+    "/map.css": ("map.css", "text/css; charset=utf-8"),
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+    "/map.js": ("map.js", "text/javascript; charset=utf-8"),
+    "/vendor/leaflet.js": ("vendor/leaflet.js", "text/javascript; charset=utf-8"),
+    "/vendor/leaflet.css": ("vendor/leaflet.css", "text/css; charset=utf-8"),
 }
 
 
@@ -101,6 +107,25 @@ def dispatch(path, params):
         limit = bounded_int(one(params, "limit", default="20"), "limit", 1, 50)
         key = ("stops", operator, name, limit)
         return CACHE.get_or_make(key, 3600 if operator == "jr" else 300, lambda: departures.find_stops(operator, name, limit))
+    if path == "/api/map-stops":
+        bbox_text = one(params, "bbox", required=True)
+        try:
+            bbox = tuple(float(value) for value in bbox_text.split(","))
+        except ValueError as exc:
+            raise ValueError("invalid bbox") from exc
+        if len(bbox) != 4 or not all(math.isfinite(value) for value in bbox):
+            raise ValueError("invalid bbox")
+        south, west, north, east = bbox
+        if not (40 <= south < north <= 46 and 138 <= west < east <= 146 and north - south <= 2 and east - west <= 2):
+            raise ValueError("bbox outside supported area")
+        zoom = bounded_int(one(params, "zoom", required=True), "zoom", 10, 19)
+        operator = one(params, "operator", default="all")
+        if operator not in (*departures.FEEDS, "jr", "all"):
+            raise ValueError("unknown operator")
+        catalog, warnings, fetched_at = map_data.catalog()
+        result = map_data.features_in_bbox(catalog, bbox, zoom, operator)
+        return {"operator": operator, "bbox": bbox, "zoom": zoom, **result, "warnings": warnings,
+                "jr_markers_fetched_at": fetched_at}
     if path == "/api/jr-patterns":
         station_id = bounded_int(one(params, "stop", required=True), "stop", 1, 999999999)
         limit = bounded_int(one(params, "limit", default="30"), "limit", 1, 50)

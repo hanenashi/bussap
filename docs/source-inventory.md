@@ -22,6 +22,10 @@ Applying calendar and exception rows yielded active trip counts on 2026-11-03 (C
 
 The site's [APIService.js](https://ekibus.city.sapporo.jp/js/ngServices/APIService.js) sends POST requests to `https://ekibus-api.city.sapporo.jp`. Stop search uses `/get_route_prediction`, routes at a stop use `/Get_station_linelist`, and the visible timetable panel uses `/Get_station_linelist_timetable`. `get_station_data` returned coordinates for JR stop 340238. The API sent `Access-Control-Allow-Origin: *` in one observed response; browser behavior remains to be tested.
 
+For the map, `/Get_marker_data` returned 4,310 detail records on 2026-11-03, including 1,360 JR boarding-point records across 675 station IDs. A station ID can have multiple distinct coordinates and `no` values (for example, 札幌駅前 `340001` has points 11–14). BUSSAP stores an ignored local snapshot of the JR rows and keys map points as `jr:<station_id>:<boarding_no>`. The timetable query still uses the station ID and route pattern; the map filters patterns by the chosen boarding number. The source response has no explicit validity end date; the daily refresh and source identity checks detect a changed or unavailable structure.
+
+[bus-routes.net's JR agency page](https://bus-routes.net/gtfs_agency.php?agid=1741) lists a GTFS-derived JR feed valid 2026-08-01 through 2027-01-31. This is a promising lead for date-specific JR data, but BUSSAP has not found or validated the original public feed or its local-route coverage. The site's [data explanation](https://yuru-to.net/data/detail/) attributes its GTFS display to open feeds collected via bustime.jp; its [terms](https://yuru-to.net/policy/) prohibit unauthorized republication of site content. Investigate the original feed rather than scraping bus-routes.net before changing the JR schedule adapter.
+
 The route pattern is assembled by the site's [timeResultController.js](https://ekibus.city.sapporo.jp/js/ngControllers/timeResultController.js) as `line_id:course_id-pos`. Example reproducible request:
 
 ```sh

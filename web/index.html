@@ -6,7 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <title>BUSSAP — 札幌のバス時刻</title>
+  <link rel="stylesheet" href="/vendor/leaflet.css">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/map.css">
+  <script src="/vendor/leaflet.js" defer></script>
+  <script src="/map.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -25,20 +29,33 @@
       </div>
     </section>
 
-    <section id="search-panel" class="panel" aria-live="polite">
+    <section id="map-panel" class="map-panel" aria-label="バス停マップ">
+      <div class="map-frame">
+        <div id="map" role="application" aria-label="札幌のバス停地図"></div>
+        <button id="locate-button" class="locate-button" type="button" aria-label="現在地を表示">◎</button>
+        <div id="map-status" class="map-status" hidden></div>
+      </div>
+      <div id="map-sheet" class="map-sheet" hidden aria-live="polite">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div id="sheet-content"></div>
+      </div>
+      <p class="map-source">停留所位置: HODA GTFS / 札幌市えきバス。JRの番号なし地点は代表位置です。<a href="https://bus-routes.net/" target="_blank" rel="noopener noreferrer">全国の路線を見る ↗</a></p>
+    </section>
+
+    <section id="search-panel" class="panel" hidden aria-live="polite">
       <div class="intro"><span class="eyebrow">BUS STOP</span><h2>バス停を探す</h2><p>バス停名を入力して、乗る場所を選んでください。</p></div>
       <div id="search-status" class="status" hidden></div>
       <div id="search-results" class="result-list"></div>
     </section>
 
     <section id="pattern-panel" class="panel" hidden aria-live="polite">
-      <div class="section-head"><div><span class="eyebrow">JR HOKKAIDO BUS</span><h2 id="pattern-title"></h2><p>路線と行先を選んでください。</p></div><button class="text-button" type="button" id="pattern-back">バス停を変更 ›</button></div>
+      <div class="section-head"><div><span class="eyebrow">JR HOKKAIDO BUS</span><h2 id="pattern-title"></h2><p>路線と行先を選んでください。</p></div><button class="text-button" type="button" id="pattern-back">地図に戻る ›</button></div>
       <div id="pattern-status" class="status" hidden></div>
       <div id="pattern-results" class="result-list"></div>
     </section>
 
     <section id="departure-panel" class="panel" hidden aria-live="polite">
-      <div class="section-head stop-head"><div><span class="eyebrow">BOARDING STOP</span><h2 id="selected-stop"></h2><p id="selected-detail"></p></div><button class="text-button" type="button" id="change-stop">バス停を変更 ›</button></div>
+      <div class="section-head stop-head"><div><span class="eyebrow">BOARDING STOP</span><h2 id="selected-stop"></h2><p id="selected-detail"></p></div><button class="text-button" type="button" id="change-stop">地図に戻る ›</button></div>
       <div class="date-bar">
         <button type="button" id="today-button" class="date-button active">今日</button>
         <button type="button" id="tomorrow-button" class="date-button">明日</button>

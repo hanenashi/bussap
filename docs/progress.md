@@ -1,5 +1,18 @@
 # Progress
 
+## 2026-11-03 — Street map and PDF preflight
+
+Goal: add a Sapporo street map that opens the existing departure view for all three operators, while assessing the supplied PDF before using it. The map design reference is `docs/design/map-screen-concept.png`.
+
+Sources: Chuo/Jotetsu exact boarding coordinates from the cached HODA GTFS ZIPs; JR numbered boarding coordinates from Sapporo Ekibus `/Get_marker_data`. Leaflet 1.9.4 is vendored with its MIT license; visible-viewport raster tiles use OpenStreetMap with attribution and no prefetch/offline tile download. [bus-routes.net](https://bus-routes.net/) is a linked comparison source, not copied data; its [terms](https://yuru-to.net/policy/) disallow unauthorized republication. See [pdf-assessment.md](pdf-assessment.md) for the 2016 vector PDF's structure and rights warning.
+
+Implementation: a validated, atomic JR marker snapshot in ignored `.local-data/` is refreshed by Beechan's daily systemd job. It contains 1,360 JR boarding records; the full catalog has 5,571 points across the three operators. `/api/map-stops` takes a bounded viewport and zoom, groups dense points, and preserves individual IDs in small clusters. The phone map starts at Sapporo Station; a tap selects an exact boarding point, previews the next two GTFS buses, or leads to JR route selection filtered by the chosen bay. Location is requested only when the user taps the location control.
+
+Verification: the local 393×852 Chromium path completed Jotetsu 札幌駅 25番のりば → two-bus preview → full departures, JR 札幌駅前 11番のりば → two matching route choices → candidate departures with `cant promise correct times now`, and Chuo 札幌駅北口 → full departures. No page errors. 320×720 and 1000×800 screenshots had no horizontal overflow. Mocked geolocation moved the viewport only after the location button was tapped. The five Python tests, JavaScript syntax checks, systemd unit verification, manual refresh job, local map API and tailnet HTTPS checks passed. The Pixel reached the HTTPS page through Termux SSH; Wireless ADB was unavailable, so this slice has not yet had a fresh physical Pixel render.
+
+Visual comparison: header/search/operator tabs, blue/coral/teal markers, right-side location control, visible map attribution, and the date/departure/action anatomy in the stop sheet follow the concept. Intentional differences are real OSM tiles instead of illustrative map art, and a truthful initial "tap a stop" sheet instead of sample departures. The selected sheet scrolls into view on small screens. No PDF is served in the app.
+
+
 ## 2026-11-03 — Pixel Chrome empty-state diagnosis
 
 The owner reported that the current Chrome tab seemed broken. ADB and Chrome DevTools showed the selected Chuo stop was `北３条西１０丁目` (`S010200097400100`) at 43.20428, 141.75217, roughly 36 km straight-line distance from Sapporo Station. Its 2026-11-03 departures were 08:47 and 12:02; at 12:20 the old generic “no buses” message was technically correct but gave no useful explanation. Chrome had also automatically translated the Japanese stop name and app labels into English. The Pixel screenshot inbox contained no recent BUSSAP screenshot; diagnosis used a fresh ADB screen capture and the live Chrome tab.

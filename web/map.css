@@ -1,0 +1,43 @@
+/* Map state follows the same ink, blue, and open-row system as the stop view. */
+.map-panel { margin: 0 calc(-1 * clamp(20px, 5vw, 36px)); }
+.map-frame { height: clamp(315px, 43dvh, 510px); position: relative; background: #e8eff3; }
+#map { width: 100%; height: 100%; }
+.leaflet-container { font: inherit; background: #e8eff3; }
+.leaflet-control-attribution { font-size: 10px !important; max-width: 74%; white-space: normal; text-align: right; }
+.locate-button { position: absolute; right: 15px; bottom: 38px; z-index: 450; width: 46px; height: 46px; border: 1px solid #d8e2ed; border-radius: 50%; background: #fff; color: #2878c2; font: inherit; font-size: 29px; line-height: 1; box-shadow: 0 3px 10px #173c6229; }
+.map-status { position: absolute; z-index: 450; top: 10px; left: 12px; right: 12px; padding: 9px 12px; border-radius: 9px; background: #fffffff0; color: #324c69; font-size: 13px; box-shadow: 0 2px 10px #1d3e6320; }
+.map-status.error { color: #a33c30; }
+.bus-marker { display: grid; place-items: center; width: 18px; height: 18px; margin: 9px; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 1px 7px #1637576b; background: #2e7bc7; color: #fff; font-size: 12px; font-weight: 800; }
+.bus-marker.jr { background: #d75e52; }
+.bus-marker.jotetsu { background: #12a797; }
+.bus-marker.mixed { background: #172d49; }
+.bus-marker.cluster { width: 34px; height: 34px; margin: 1px; border: 3px solid #fff; background: #e8f2fc; color: #1e68ae; box-shadow: 0 1px 9px #16375777; }
+.bus-marker.cluster.jr { background: #fff0ed; color: #bb493e; }
+.bus-marker.cluster.jotetsu { background: #e6f8f5; color: #087f73; }
+.bus-marker.cluster.mixed { background: #edf0f4; color: #172d49; }
+.map-sheet { position: relative; z-index: 500; margin-top: -13px; padding: 10px clamp(20px, 5vw, 36px) 22px; border-radius: 22px 22px 0 0; background: #fff; box-shadow: 0 -5px 18px #1637571a; }
+.sheet-handle { width: 42px; height: 4px; margin: 0 auto 18px; border-radius: 5px; background: #b6bdc6; }
+.sheet-title { font-size: 24px; letter-spacing: -.04em; line-height: 1.25; margin: 0 0 4px; overflow-wrap: anywhere; }
+.sheet-subtitle { color: #657287; font-size: 14px; line-height: 1.5; margin: 0 0 14px; }
+.sheet-date-controls { display: flex; gap: 8px; margin: 12px 0 15px; }
+.sheet-date-controls .date-button { height: 43px; min-width: 86px; }
+.sheet-heading { font-size: 20px; letter-spacing: -.04em; margin: 12px 0 8px; }
+.sheet-departures { border-top: 1px solid #e0e6ed; min-height: 54px; }
+.sheet-departure { display: grid; grid-template-columns: 72px 1fr; gap: 13px; align-items: center; border-bottom: 1px solid #e0e6ed; padding: 10px 2px; font-size: 14px; font-weight: 700; }
+.sheet-departure strong { font-size: 23px; letter-spacing: -.04em; }
+.sheet-departure:first-child strong { color: #c25048; }
+.sheet-departure span { overflow-wrap: anywhere; }
+.sheet-message { font-size: 14px; color: #617185; line-height: 1.5; margin: 15px 0; }
+.sheet-action { width: 100%; height: 48px; margin-top: 15px; border: 0; border-radius: 10px; background: #2e7bc7; color: #fff; font: inherit; font-size: 16px; font-weight: 800; }
+.sheet-stop-list { max-height: 235px; overflow: auto; border-top: 1px solid #e0e6ed; }
+.sheet-stop-button { display: block; width: 100%; min-height: 56px; padding: 11px 2px; border: 0; border-bottom: 1px solid #e0e6ed; text-align: left; background: #fff; color: #0b1b33; font: inherit; }
+.sheet-stop-button strong { display: block; font-size: 16px; }
+.sheet-stop-button small { display: block; margin-top: 3px; color: #6b7788; }
+.sheet-legend { display: flex; gap: 18px; align-items: center; padding: 2px 0 4px; }
+.sheet-legend-item { display: inline-flex; gap: 6px; align-items: center; color: #45566e; font-size: 13px; font-weight: 700; }
+.legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #2e7bc7; }
+.legend-dot.jr { background: #d75e52; }
+.legend-dot.jotetsu { background: #12a797; }
+.map-source { margin: 11px clamp(20px, 5vw, 36px) 0; color: #718094; font-size: 11px; line-height: 1.5; }
+.map-source a { color: #2774bd; }
+@media (max-width: 360px) { .map-panel { margin: 0 -16px; } .map-sheet { padding-left: 16px; padding-right: 16px; } .map-source { margin-left: 16px; margin-right: 16px; } }

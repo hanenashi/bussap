@@ -1,5 +1,5 @@
 [Unit]
-Description=Refresh BUSSAP Chuo and Jotetsu GTFS feeds
+Description=Refresh BUSSAP timetable feeds and JR map stops
 After=network-online.target
 Wants=network-online.target
 
@@ -7,4 +7,5 @@ Wants=network-online.target
 Type=oneshot
 WorkingDirectory=%h/GIT/bussap
 ExecStart=/usr/bin/python3 %h/GIT/bussap/scripts/departures.py refresh all
+ExecStart=/usr/bin/python3 %h/GIT/bussap/scripts/map_data.py refresh-jr
 NoNewPrivileges=true

@@ -21,7 +21,7 @@ function locationLabel(stop) {
   const km = distanceFromSapporo(stop);
   return km == null ? "" : `札幌駅から直線約${km < 10 ? km.toFixed(1) : Math.round(km)}km`;
 }
-function setPanel(panel) { for (const id of ["search-panel", "pattern-panel", "departure-panel"]) $(id).hidden = id !== panel; }
+function setPanel(panel) { for (const id of ["map-panel", "search-panel", "pattern-panel", "departure-panel"]) $(id).hidden = id !== panel; if (panel === "map-panel") BUSSAPMap.show(); }
 function setStatus(id, message, error = false) { const el = $(id); el.hidden = !message; el.textContent = message || ""; el.classList.toggle("error", error); }
 function clear(el) { el.replaceChildren(); }
 function make(tag, className, value) { const el = document.createElement(tag); if (className) el.className = className; if (value != null) el.textContent = value; return el; }
@@ -40,7 +40,7 @@ function queueSearch() { ++state.searchSerial; clearTimeout(searchTimer); search
 async function search() {
   const term = $("stop-search").value.trim();
   const serial = ++state.searchSerial;
-  state.stop = null; state.pattern = null; setPanel("search-panel"); clear($("search-results"));
+  state.stop = null; state.pattern = null; setPanel(term ? "search-panel" : "map-panel"); clear($("search-results"));
   if (term.length < 2) { setStatus("search-status", term ? "2文字以上入力してください。" : ""); return; }
   setStatus("search-status", "バス停を探しています…");
   const choices = state.operator === "all" ? operators : [state.operator];
@@ -70,8 +70,9 @@ function renderSearchResults(serial, choices, results) {
   $("search-results").append(fragment);
 }
 
-async function selectStop(stop) {
-  clearTimeout(searchTimer); ++state.searchSerial; state.stop = stop; state.pattern = null; state.date = tokyoNow().date;
+async function selectStop(stop, chosenDate = tokyoNow().date) {
+  clearTimeout(searchTimer); ++state.searchSerial; state.stop = stop; state.pattern = null; state.date = chosenDate;
+  BUSSAPMap.focus(stop);
   if (stop.operator === "jr") { await loadPatterns(); return; }
   setPanel("departure-panel"); await loadDepartures();
 }
@@ -82,8 +83,9 @@ async function loadPatterns() {
   try {
     const data = await get("/api/jr-patterns", { stop: stop.id.split(":")[1], limit: "50" });
     if (state.stop !== stop) return;
-    setStatus("pattern-status", data.patterns.length ? (data.total_patterns > data.patterns.length ? `最初の${data.patterns.length}路線を表示しています。` : "") : "このバス停の路線が見つかりませんでした。");
-    for (const pattern of data.patterns) {
+    const patterns = stop.boarding_position ? data.patterns.filter(pattern => String(pattern.boarding_position) === String(stop.boarding_position)) : data.patterns;
+    setStatus("pattern-status", patterns.length ? (data.total_patterns > data.patterns.length ? `最初の${data.patterns.length}路線を表示しています。` : "") : stop.boarding_position ? "この乗り場の路線が見つかりませんでした。地図で別の乗り場を選んでください。" : "このバス停の路線が見つかりませんでした。");
+    for (const pattern of patterns) {
       const position = pattern.boarding_position ? `${pattern.boarding_position}番のりば` : "乗り場番号なし";
       $("pattern-results").append(resultButton(pattern.route || "路線名なし", `${pattern.direction || "行先不明"} · ${position}`, () => { state.pattern = pattern; setPanel("departure-panel"); loadDepartures(); }));
     }
@@ -108,7 +110,8 @@ async function loadDepartures() {
   $("selected-detail").textContent = `${names[stop.operator]}${state.pattern ? ` · ${state.pattern.route} · ${state.pattern.direction || "行先不明"}` : ""}${locationLabel(stop) ? ` · ${locationLabel(stop)}` : ""}`;
   clear($("departure-results")); clear($("source-note")); setStatus("departure-status", "時刻を読み込んでいます…");
   const now = tokyoNow();
-  const params = { operator: stop.operator, stop: stop.id.split(":").slice(1).join(":"), date: state.date, after: state.date === now.date ? now.time : "00:00", limit: "50" };
+  const sourceStopId = stop.operator === "jr" ? String(stop.station_id || stop.id.split(":")[1]) : stop.id.split(":").slice(1).join(":");
+  const params = { operator: stop.operator, stop: sourceStopId, date: state.date, after: state.date === now.date ? now.time : "00:00", limit: "50" };
   if (state.pattern) params.pattern = state.pattern.pattern;
   try {
     const data = await get("/api/departures", params);
@@ -150,11 +153,12 @@ async function loadDepartures() {
   } catch { if (serial === state.loadSerial) setStatus("departure-status", "時刻を読み込めませんでした。更新を押して、もう一度お試しください。", true); }
 }
 
-function resetSearch() { ++state.loadSerial; state.stop = null; state.pattern = null; setPanel("search-panel"); $("stop-search").focus(); if ($("stop-search").value.trim().length >= 2) search(); }
+function resetSearch() { ++state.loadSerial; ++state.searchSerial; state.stop = null; state.pattern = null; $("stop-search").value = ""; setPanel("map-panel"); }
 $("stop-search").addEventListener("input", queueSearch);
 document.querySelectorAll("[data-operator]").forEach(button => button.addEventListener("click", () => {
   state.operator = button.dataset.operator;
   document.querySelectorAll("[data-operator]").forEach(tab => { const selected = tab === button; tab.classList.toggle("active", selected); tab.setAttribute("aria-pressed", selected); });
+  BUSSAPMap.setOperator(state.operator);
   if ($("stop-search").value.trim()) queueSearch();
 }));
 $("change-stop").addEventListener("click", resetSearch);
@@ -164,3 +168,4 @@ $("tomorrow-button").addEventListener("click", () => { state.date = nextDay(toky
 $("date-input").addEventListener("change", event => { if (event.target.value) { state.date = event.target.value; loadDepartures(); } });
 $("calendar-button").addEventListener("click", () => { const input = $("date-input"); input.showPicker?.(); });
 $("refresh-button").addEventListener("click", loadDepartures);
+BUSSAPMap.init(selectStop);
