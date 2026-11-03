@@ -27,6 +27,13 @@ function clear(el) { el.replaceChildren(); }
 function make(tag, className, value) { const el = document.createElement(tag); if (className) el.className = className; if (value != null) el.textContent = value; return el; }
 function displayTime(value) { const [hour, minute] = value.split(":"); return `${String(Number(hour) % 24).padStart(2, "0")}:${minute}`; }
 function serviceMinutes(value) { const [hour, minute] = value.split(":"); return Number(hour) * 60 + Number(minute); }
+function jrNotice(data) {
+  if (data.warning !== "cant promise correct times now") return data.warning || "";
+  const revision = String(data.source_revision || "");
+  return /^\d{8}$/.test(revision)
+    ? `JR時刻表: ${revision.slice(0, 4)}/${revision.slice(4, 6)}/${revision.slice(6, 8)}改正データ。選択日の運行は未確認です。`
+    : "JR時刻表: 改正日が不明です。選択日の運行は未確認です。";
+}
 function routeLabel(name) { return name.match(/\[([^\]]+)\]/)?.[1] || name.match(/^[^0-9０-９]{0,3}[0-9０-９]+[A-Za-zＡ-Ｚａ-ｚ]?/u)?.[0] || name.split(/[・･]/)[0]; }
 async function get(path, params) { const response = await fetch(`${path}?${new URLSearchParams(params)}`, { cache: "no-store" }); const body = await response.json(); if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`); return body; }
 
@@ -220,7 +227,8 @@ async function loadDepartures() {
         }
       } catch { /* Keep the useful empty-state message if the second lookup fails. */ }
     }
-    setStatus("departure-status", [data.warning, offlineNotice, departures.length ? "" : emptyMessage].filter(Boolean).join(" · "), Boolean(data.warning));
+    const sourceNotice = stop.operator === "jr" ? jrNotice(data) : data.warning;
+    setStatus("departure-status", [sourceNotice, offlineNotice, departures.length ? "" : emptyMessage].filter(Boolean).join(" · "), Boolean(data.warning && stop.operator !== "jr"));
     for (const departure of departures) {
       const row = make(stop.operator === "jr" ? "div" : "button", "departure-row");
       if (stop.operator !== "jr") row.type = "button";
@@ -245,7 +253,8 @@ async function loadDepartures() {
     note.append(make("span", "", `出典: ${names[stop.operator]}時刻表`));
     const url = stop.operator === "jr" ? "https://www.jrhokkaidobus.com/timetable/routebus_sapporo/" : data.source;
     if (url) { const link = make("a", "", "公式・データ元を確認 ↗"); link.href = url; link.target = "_blank"; link.rel = "noopener noreferrer"; note.append(document.createTextNode(" · "), link); }
-    if (data.feed_fetched_at) note.append(make("span", "", ` · 取得 ${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(data.feed_fetched_at))}`));
+    const fetchedAt = data.feed_fetched_at || data.source_fetched_at;
+    if (fetchedAt) note.append(make("span", "", ` · 取得 ${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(fetchedAt))}`));
   } catch (error) {
     if (serial === state.loadSerial) {
       const stale = /unknown (chuo|jotetsu) stop ID|JR pattern is not listed at this stop/.test(error.message);
@@ -275,4 +284,10 @@ $("favorite-button").addEventListener("click", toggleFavorite);
 window.addEventListener("storage", event => { if (event.key === FAVORITES_KEY) { favorites = readFavorites(); renderFavorites(); } });
 BUSSAPMap.init(selectStop);
 renderFavorites();
+const networkMapLink = $("network-map-link");
+if (window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true) {
+  networkMapLink.removeAttribute("target");
+  networkMapLink.removeAttribute("rel");
+  networkMapLink.textContent = "参考路線図 (2016年・PDF) ›";
+}
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});

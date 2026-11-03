@@ -216,12 +216,24 @@ def jr_category(service_date: date) -> tuple[int, str]:
     return 1, "weekday"
 
 
+def jr_revision_notice(revision: int | str) -> str:
+    raw = str(revision)
+    if len(raw) == 8 and raw.isdecimal():
+        try:
+            date.fromisoformat(f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}")
+            return f"JR時刻表: {raw[:4]}/{raw[4:6]}/{raw[6:8]}改正データ。選択日の運行は未確認です。"
+        except ValueError:
+            pass
+    return "JR時刻表: 改正日が不明です。選択日の運行は未確認です。"
+
+
 def query_jr(station_id: int, pattern: str, service_date: date, after: str, limit: int, category_override: int | None) -> dict:
     category, label = (category_override, "manually selected") if category_override else jr_category(service_date)
     pattern_info = next((r for r in jr_patterns(station_id, None)["patterns"] if r["pattern"] == pattern), None)
     if pattern_info is None:
         raise ValueError("JR pattern is not listed at this stop")
     data = post_json(JR_ENDPOINT, {"kind": 0, "pattern": pattern, "departure_station_id": station_id})
+    source_fetched_at = datetime.now(TOKYO).isoformat()
     table = data.get("station_linelist_timetable", {}).get("time_table", {})
     if table.get("pattern") != pattern or table.get("start", {}).get("station_id") != station_id:
         raise ValueError("JR route or stop identity changed")
@@ -239,6 +251,7 @@ def query_jr(station_id: int, pattern: str, service_date: date, after: str, limi
             "pattern": pattern,
             "source_revision": table.get("date_of_revision"),
             "reviewed_revision": JR_REVIEWED_REVISION,
+            "source_fetched_at": source_fetched_at,
             "source": JR_ENDPOINT,
             "departures": [],
         }
@@ -251,7 +264,7 @@ def query_jr(station_id: int, pattern: str, service_date: date, after: str, limi
         "operator": "jr",
         "service_date": service_date.isoformat(),
         "status": "day_category_candidate_unverified_for_date",
-        "warning": "cant promise correct times now",
+        "warning": jr_revision_notice(table.get("date_of_revision")),
         "stop": {"id": f"jr:{station_id}", "name": table["start"].get("station_name"), "boarding_position": pattern_info["boarding_position"]},
         "route": lines[0].get("line_name"),
         "direction": pattern_info["direction"],
@@ -260,6 +273,7 @@ def query_jr(station_id: int, pattern: str, service_date: date, after: str, limi
         "day_category_label": label,
         "source_revision": table.get("date_of_revision"),
         "reviewed_revision": JR_REVIEWED_REVISION,
+        "source_fetched_at": source_fetched_at,
         "source": JR_ENDPOINT,
         "departures": [{"route": lines[0].get("line_name"), "destination": r.get("course_name"), "scheduled_time": r["time"], "scheduled_at": None, "course_id": f"jr:{r.get('course_id')}"} for r in times[:limit]],
     }

@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-11-03 — JR source date and one PDF exit control
+
+Goal: replace the generic JR `cant promise correct times now` text with the actual timetable revision date and a short validity caveat, while showing when Beechan fetched that source. In the installed standalone app, open the PDF viewer in the same app window so the viewer's back button is the only visible exit control. Keep new-tab behavior in ordinary browser mode.
+
+Source and assumptions: Ekibus returns `date_of_revision` (currently `20260401`); this is a timetable revision, not the date the phone cached a response. The existing `offline_cached_at` remains a separate phone cache timestamp. The PWA manifest requests `standalone`, which can be detected with `matchMedia('(display-mode: standalone)')`.
+
+Implementation: JR responses now say `JR時刻表: 2026/04/01改正データ。選択日の運行は未確認です。` and include Beechan's `source_fetched_at`; the source note shows its retrieval time. Older offline responses with the former English warning are relabeled from their saved `source_revision`. The PDF link uses the same app window in standalone mode, leaving the page's back button as the sole exit control; browser mode still opens a tab.
+
+Checks: six Python tests, Python and JavaScript syntax, and `git diff --check` passed. The live API returned the 2026/04/01 revision and a separate 2026-11-03 fetch time. Mobile Chromium showed the JR notice and retrieval time with four departures and no page errors; it also translated an older cached warning correctly. An offline reload showed the dated notice alongside a separate phone cache time at 320 px with no horizontal overflow. Browser mode rendered the PDF in a tab and closed it with the in-page back button; simulated standalone mode rendered it in the same window with one button and returned to the map. Physical Pixel standalone behavior remains unverified while ADB is deferred.
+
 ## 2026-11-03 — Installable shell and viewed-timetable cache
 
 Goal: make BUSSAP installable on a phone and let a saved boarding point reopen the timetable for a date this browser already viewed when Beechan or the network is unavailable.

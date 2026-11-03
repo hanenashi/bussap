@@ -3,8 +3,14 @@ import * as pdfjs from "/vendor/pdf.mjs";
 pdfjs.GlobalWorkerOptions.workerSrc = "/vendor/pdf.worker.mjs";
 
 document.getElementById("back").addEventListener("click", () => {
-  window.close();
-  setTimeout(() => { if (!window.closed) location.replace("/"); }, 150);
+  if (window.opener) {
+    window.close();
+    setTimeout(() => { if (!window.closed) location.replace("/"); }, 150);
+    return;
+  }
+  const referrer = document.referrer ? new URL(document.referrer) : null;
+  if (referrer?.origin === location.origin && referrer.pathname === "/" && history.length > 1) history.back();
+  else location.replace("/");
 });
 
 const viewport = document.getElementById("viewport");

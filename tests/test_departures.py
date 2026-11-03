@@ -71,6 +71,19 @@ class DepartureTests(unittest.TestCase):
         self.assertEqual(result["status"], "source_revision_changed_review_required")
         self.assertEqual(result["departures"], [])
 
+    def test_jr_notice_uses_source_revision(self):
+        patterns = {"patterns": [{"pattern": "1:2-0", "route": "local", "direction": "A→B", "boarding_position": "3"}]}
+        response = {"result": "0", "station_linelist_timetable": {"time_table": {
+            "pattern": "1:2-0", "start": {"station_id": 7, "station_name": "A"},
+            "date_of_revision": departures.JR_REVIEWED_REVISION,
+            "line_list": [{"line_name": "local", "dia_list": [{"dia_flg": 1, "time_table": [{"time": "08:00", "course_id": "2"}]}]}],
+        }}}
+        with patch.object(departures, "jr_patterns", return_value=patterns), patch.object(departures, "post_json", return_value=response):
+            result = departures.query_jr(7, "1:2-0", date(2026, 11, 4), "00:00", 3, None)
+        self.assertEqual(result["status"], "day_category_candidate_unverified_for_date")
+        self.assertIn("2026/04/01改正", result["warning"])
+        self.assertIn("source_fetched_at", result)
+
 
 if __name__ == "__main__":
     unittest.main()
