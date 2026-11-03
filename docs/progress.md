@@ -1,5 +1,9 @@
 # Progress
 
+## 2026-11-03 — Both phones enrolled
+
+The wife completed enrollment through the public gateway. The production database now lists exactly two credentials, `owner` and `wife`. Her one-use code file was removed. The public sign-in page still responds, and an API request without a session still receives 401. The owner confirmed that she is in; installation on her Pixel has not been independently observed.
+
 ## 2026-11-03 — Dedicated BUSSAP Funnel node
 
 The owner chose a separate Tailscale node so Beechan's five existing private Serve URLs would stay intact. A userspace `tailscaled` instance with its own mode-0700 state and socket is now registered as `bussap-gate.tail8d9f69.ts.net`; the `bussap-tailnode.service` user unit keeps it running. The gateway's WebAuthn RP ID and allowed origins were changed to that hostname. The previous staging mapping on Beechan was removed, and the new node has private staging on port 10003 and public Funnel on port 443. The original BUSSAP at Beechan port 10002 remains private.
