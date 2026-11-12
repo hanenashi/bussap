@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-12 — JR source outage shown clearly
+
+The owner reported that 琴似１条３丁目 showed a generic route loading error. Beechan's JR lookup returned 502 because the Sapporo Ekibus API refused connections; the stop is present in the local JR marker snapshot as station 340598. [Sapporo City says it temporarily stopped Ekibus](https://www.city.sapporo.jp/st/trouble/r081109_homepageteijshi.html) after an unauthorized access incident on November 9, pending safety checks. BUSSAP now names the unavailable JR data source on stop search, route selection, departure loading, and route details, and links to JR Hokkaido Bus's official timetable page. Chuo and Jotetsu still use their local GTFS feeds.
+
+The current JR marker snapshot can locate a stop on the map, but it cannot supply route patterns or departures while Ekibus is unavailable. BUSSAP does not invent times from that snapshot.
+
 ## 2026-11-03 — Departure route details
 
 Each departure now opens its ordered stop list. Chuo and Jotetsu use the exact GTFS trip and boarding sequence; JR uses the selected Ekibus course and joins station IDs to the JR marker snapshot. The route map connects adjacent stop coordinates with straight dashed segments and explicitly labels the line as approximate. Stops without JR marker coordinates remain in the list and leave gaps in the line. The existing tap-to-filter behavior on Chuo and Jotetsu departure rows remains separate from the new **経路を見る** action. Route details need a connection; the service worker still caches only previously viewed timetables.

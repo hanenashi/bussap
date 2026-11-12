@@ -24,6 +24,14 @@ function locationLabel(stop) {
 }
 function setPanel(panel) { for (const id of ["map-panel", "search-panel", "pattern-panel", "departure-panel", "route-panel"]) $(id).hidden = id !== panel; $("favorites-section").hidden = panel !== "map-panel" || !favorites.length; if (panel === "map-panel") BUSSAPMap.show(); }
 function setStatus(id, message, error = false) { const el = $(id); el.hidden = !message; el.textContent = message || ""; el.classList.toggle("error", error); }
+function setJrSourceStatus(id) {
+  setStatus(id, "札幌市えきバスのJRデータに接続できません。", true);
+  const link = make("a", "", "JR北海道バスの公式時刻表を見る ↗");
+  link.href = "https://www.jrhokkaidobus.com/timetable/time/";
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  $(id).append(document.createElement("br"), link);
+}
 function clear(el) { el.replaceChildren(); }
 function make(tag, className, value) { const el = document.createElement(tag); if (className) el.className = className; if (value != null) el.textContent = value; return el; }
 function displayTime(value) { const [hour, minute] = value.split(":"); return `${String(Number(hour) % 24).padStart(2, "0")}:${minute}`; }
@@ -134,7 +142,7 @@ async function search() {
   for (const operator of choices) {
     get("/api/stops", { operator, name: term, limit: "30" })
       .then(data => { results.set(operator, data); renderSearchResults(serial, choices, results); })
-      .catch(() => { results.set(operator, null); renderSearchResults(serial, choices, results); });
+      .catch(error => { results.set(operator, { error: error.message }); renderSearchResults(serial, choices, results); });
   }
 }
 function renderSearchResults(serial, choices, results) {
@@ -144,9 +152,15 @@ function renderSearchResults(serial, choices, results) {
   list.sort((a, b) => Number(b.name === term) - Number(a.name === term) || (distanceFromSapporo(a) ?? Infinity) - (distanceFromSapporo(b) ?? Infinity) || a.name.localeCompare(b.name, "ja") || operators.indexOf(a.operator) - operators.indexOf(b.operator));
   clear($("search-results"));
   const done = results.size === choices.length;
-  const failed = [...results.values()].filter(value => value === null).length;
-  if (!list.length) { setStatus("search-status", done ? (failed === choices.length ? "検索できませんでした。接続を確認して、もう一度お試しください。" : "見つかりませんでした。別の名前を試してください。") : "バス停を探しています…", done && failed === choices.length); return; }
-  setStatus("search-status", !done ? `${list.length}件を表示中。ほかのバス会社も検索しています…` : failed ? "一部のバス会社を検索できませんでした。" : `${list.length}件の乗り場が見つかりました。`);
+  const failed = [...results.values()].filter(value => value?.error).length;
+  const jrUnavailable = results.get("jr")?.error === "source unavailable";
+  if (!list.length) {
+    if (done && jrUnavailable) setJrSourceStatus("search-status");
+    else setStatus("search-status", done ? (failed === choices.length ? "検索できませんでした。接続を確認して、もう一度お試しください。" : "見つかりませんでした。別の名前を試してください。") : "バス停を探しています…", done && failed === choices.length);
+    return;
+  }
+  if (done && jrUnavailable) setJrSourceStatus("search-status");
+  else setStatus("search-status", !done ? `${list.length}件を表示中。ほかのバス会社も検索しています…` : failed ? "一部のバス会社を検索できませんでした。" : `${list.length}件の乗り場が見つかりました。`);
   const fragment = document.createDocumentFragment();
   for (const stop of list) {
     const position = stop.boarding_position ? `${stop.boarding_position}番のりば` : "乗り場番号なし";
@@ -175,7 +189,11 @@ async function loadPatterns() {
       const position = pattern.boarding_position ? `${pattern.boarding_position}番のりば` : "乗り場番号なし";
       $("pattern-results").append(resultButton(pattern.route || "路線名なし", `${pattern.direction || "行先不明"} · ${position}`, () => { state.pattern = pattern; setPanel("departure-panel"); loadDepartures(); }));
     }
-  } catch { setStatus("pattern-status", "路線を読み込めませんでした。もう一度お試しください。", true); }
+  } catch (error) {
+    if (state.stop !== stop) return;
+    if (error.message === "source unavailable") setJrSourceStatus("pattern-status");
+    else setStatus("pattern-status", "路線を読み込めませんでした。もう一度お試しください。", true);
+  }
 }
 
 function updateDateButtons() {
@@ -270,7 +288,8 @@ async function loadDepartures() {
     if (serial === state.loadSerial) {
       const stale = /unknown (chuo|jotetsu) stop ID|JR pattern is not listed at this stop/.test(error.message);
       const uncached = error.message.includes("この日付の保存済み時刻表がありません");
-      setStatus("departure-status", stale ? "この乗り場・路線は現在のデータにありません。地図から選び直してください。" : uncached ? error.message : "時刻を読み込めませんでした。更新を押して、もう一度お試しください。", true);
+      if (stop.operator === "jr" && error.message === "source unavailable") setJrSourceStatus("departure-status");
+      else setStatus("departure-status", stale ? "この乗り場・路線は現在のデータにありません。地図から選び直してください。" : uncached ? error.message : "時刻を読み込めませんでした。更新を押して、もう一度お試しください。", true);
     }
   }
 }
@@ -339,8 +358,11 @@ async function showRouteDetails(departure, stop, pattern) {
     $("route-content").hidden = false;
     setStatus("route-status", "");
     drawRoute(data);
-  } catch {
-    if (serial === state.routeSerial) setStatus("route-status", navigator.onLine ? "経路を読み込めませんでした。時刻表に戻って、もう一度お試しください。" : "オフラインでは経路を読み込めません。", true);
+  } catch (error) {
+    if (serial === state.routeSerial) {
+      if (stop.operator === "jr" && error.message === "source unavailable") setJrSourceStatus("route-status");
+      else setStatus("route-status", navigator.onLine ? "経路を読み込めませんでした。時刻表に戻って、もう一度お試しください。" : "オフラインでは経路を読み込めません。", true);
+    }
   }
 }
 

@@ -35,3 +35,4 @@ button.departure-row:focus-visible{outline:3px solid #97c5ee;outline-offset:-3px
 .route-stops li.boarding{background:#eef6fd;font-weight:750}
 .route-stops li.boarding .route-stop-number{background:#2e7bc7;color:#fff}
 .route-boarding-label{flex:none;color:#236db1;font-size:11px;font-weight:800}
+.status a{display:inline-block;margin-top:8px;color:#236db1;font-weight:750}
