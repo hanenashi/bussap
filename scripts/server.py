@@ -15,6 +15,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import departures
 import map_data
+import buskita
 
 
 class BoundedCache:
@@ -115,7 +116,19 @@ def dispatch(path, params):
             raise ValueError("name too long")
         limit = bounded_int(one(params, "limit", default="20"), "limit", 1, 50)
         key = ("stops", operator, name, limit)
-        return CACHE.get_or_make(key, 3600 if operator == "jr" else 300, lambda: departures.find_stops(operator, name, limit))
+        def find():
+            try:
+                return departures.find_stops(operator, name, limit)
+            except OSError:
+                if operator != "jr":
+                    raise
+                stops, _, fetched_at = map_data.catalog()
+                needle = buskita.norm(name).casefold()
+                matches = [stop for stop in stops if stop["operator"] == "jr" and needle in buskita.norm(stop["name"]).casefold()]
+                matches.sort(key=lambda stop: (buskita.norm(stop["name"]).casefold() != needle, stop["name"], stop["id"]))
+                return {"operator": "jr", "query": name, "total_matches": len(matches),
+                        "stops": matches[:limit], "source": "cached_jr_markers", "fetched_at": fetched_at}
+        return CACHE.get_or_make(key, 3600 if operator == "jr" else 300, find)
     if path == "/api/map-stops":
         bbox_text = one(params, "bbox", required=True)
         try:
@@ -139,7 +152,14 @@ def dispatch(path, params):
         station_id = bounded_int(one(params, "stop", required=True), "stop", 1, 999999999)
         limit = bounded_int(one(params, "limit", default="30"), "limit", 1, 50)
         key = ("patterns", station_id, limit)
-        return CACHE.get_or_make(key, 900, lambda: departures.jr_patterns(station_id, limit))
+        def get_patterns():
+            try:
+                return departures.jr_patterns(station_id, limit)
+            except OSError:
+                markers = map_data.catalog()[0]
+                stops = CACHE.get_or_make(("buskita-catalog",), 3600, buskita.catalog)
+                return buskita.patterns(station_id, markers, stops, limit)
+        return CACHE.get_or_make(key, 900, get_patterns)
     if path == "/api/route-details":
         operator = one(params, "operator", required=True)
         if operator not in (*departures.FEEDS, "jr"):
@@ -175,6 +195,12 @@ def dispatch(path, params):
             category_raw = one(params, "jr_category")
             category = bounded_int(category_raw, "jr_category", 1, 4) if category_raw else None
             key = ("jr-departures", station_id, pattern, service_date, after, limit, category)
+            if pattern.startswith("buskita:"):
+                def get_buskita():
+                    markers = map_data.catalog()[0]
+                    stops = CACHE.get_or_make(("buskita-catalog",), 3600, buskita.catalog)
+                    return buskita.departures_at(station_id, pattern, service_date, after, limit, markers, stops)
+                return CACHE.get_or_make(key, 120, get_buskita)
             return CACHE.get_or_make(key, 600, lambda: departures.query_jr(station_id, pattern, service_date, after, limit, category))
         if len(stop) > 80:
             raise ValueError("stop ID too long")

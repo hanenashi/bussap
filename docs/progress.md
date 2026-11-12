@@ -1,5 +1,11 @@
 # Progress
 
+## 2026-11-12 — JR Buskita fallback during Ekibus outage
+
+JR Hokkaido Bus links to Busdia stop timetables and Buskita. While Ekibus is stopped, Beechan now searches its cached JR stop markers and matches each selected boarding position to Buskita by normalized name, platform number, and coordinates within 100 m. A selected date requests Buskita's scheduled/arrival listings in bounded pages, up to 50 departures. The UI labels the source, links to that Buskita stop, and retains the warning that operation on the selected date needs confirmation. The original Ekibus route selection and stop-order detail resume when Ekibus responds; Buskita fallback has no stop-order detail or offline cache. No match yields the existing official timetable link.
+
+Checks: Buskita's 2026-11-13 08:00 responses for 琴似1条3丁目 positions 1 and 2 matched the times and routes on the operator-linked 2026/04/01 stop PDFs. Live BUSSAP search returned both positions, fallback patterns matched the Buskita IDs, and the dated query returned 50 ordered departures. Fourteen local tests passed, including stop matching and bounded paging. Chromium at 390 px completed search → position → Buskita selection → next-day departures with no page errors or horizontal overflow. Buskita's web API is undocumented and may change; a source-shape check prevents silently using malformed data.
+
 ## 2026-11-12 — JR source outage shown clearly
 
 The owner reported that 琴似１条３丁目 showed a generic route loading error. Beechan's JR lookup returned 502 because the Sapporo Ekibus API refused connections; the stop is present in the local JR marker snapshot as station 340598. [Sapporo City says it temporarily stopped Ekibus](https://www.city.sapporo.jp/st/trouble/r081109_homepageteijshi.html) after an unauthorized access incident on November 9, pending safety checks. BUSSAP now names the unavailable JR data source on stop search, route selection, departure loading, and route details, and links to JR Hokkaido Bus's official timetable page. Chuo and Jotetsu still use their local GTFS feeds.

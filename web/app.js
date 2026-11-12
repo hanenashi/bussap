@@ -178,11 +178,13 @@ async function selectStop(stop, chosenDate = tokyoNow().date) {
 }
 async function loadPatterns() {
   setPanel("pattern-panel"); $("pattern-title").textContent = state.stop.name;
+  $("pattern-instruction").textContent = "路線と行先を選んでください。";
   clear($("pattern-results")); setStatus("pattern-status", "路線を読み込んでいます…");
   const stop = state.stop;
   try {
     const data = await get("/api/jr-patterns", { stop: stop.id.split(":")[1], limit: "50" });
     if (state.stop !== stop) return;
+    if (data.source === "buskita") $("pattern-instruction").textContent = "バスキタから、この乗り場の次の便を表示します。";
     const patterns = stop.boarding_position ? data.patterns.filter(pattern => String(pattern.boarding_position) === String(stop.boarding_position)) : data.patterns;
     setStatus("pattern-status", patterns.length ? (data.total_patterns > data.patterns.length ? `最初の${data.patterns.length}路線を表示しています。` : "") : stop.boarding_position ? "この乗り場の路線が見つかりませんでした。地図で別の乗り場を選んでください。" : "このバス停の路線が見つかりませんでした。");
     for (const pattern of patterns) {
@@ -262,7 +264,7 @@ async function loadDepartures() {
       const destination = make("span", "destination", stop.operator === "jr" ? fullDestination.split("→").at(-1) : fullDestination);
       destination.title = fullDestination;
       line.append(route, destination);
-      main.append(line, make("span", "scheduled", "予定時刻"));
+      main.append(line, make("span", "scheduled", data.status === "buskita_next_departures" ? "バスキタ掲載時刻" : "予定時刻"));
       row.append(make("time", "departure-time", displayTime(departure.scheduled_time)), main);
       if (stop.operator !== "jr") {
         row.setAttribute("aria-label", `${displayTime(departure.scheduled_time)} ${shortRoute} ${fullDestination}。${state.routeFilter === shortRoute ? "すべての路線を表示" : `${shortRoute}のみ表示`}`);
@@ -280,7 +282,7 @@ async function loadDepartures() {
     }
     const note = $("source-note");
     note.append(make("span", "", `出典: ${names[stop.operator]}時刻表`));
-    const url = stop.operator === "jr" ? "https://www.jrhokkaidobus.com/timetable/routebus_sapporo/" : data.source;
+    const url = data.source_link || (stop.operator === "jr" ? "https://www.jrhokkaidobus.com/timetable/routebus_sapporo/" : data.source);
     if (url) { const link = make("a", "", "公式・データ元を確認 ↗"); link.href = url; link.target = "_blank"; link.rel = "noopener noreferrer"; note.append(document.createTextNode(" · "), link); }
     const fetchedAt = data.feed_fetched_at || data.source_fetched_at;
     if (fetchedAt) note.append(make("span", "", ` · 取得 ${new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(fetchedAt))}`));
@@ -288,7 +290,10 @@ async function loadDepartures() {
     if (serial === state.loadSerial) {
       const stale = /unknown (chuo|jotetsu) stop ID|JR pattern is not listed at this stop/.test(error.message);
       const uncached = error.message.includes("この日付の保存済み時刻表がありません");
-      if (stop.operator === "jr" && error.message === "source unavailable") setJrSourceStatus("departure-status");
+      if (stop.operator === "jr" && error.message === "source unavailable" && state.pattern && !state.pattern.pattern.startsWith("buskita:")) {
+        state.pattern = null;
+        await loadPatterns();
+      } else if (stop.operator === "jr" && error.message === "source unavailable") setJrSourceStatus("departure-status");
       else setStatus("departure-status", stale ? "この乗り場・路線は現在のデータにありません。地図から選び直してください。" : uncached ? error.message : "時刻を読み込めませんでした。更新を押して、もう一度お試しください。", true);
     }
   }
